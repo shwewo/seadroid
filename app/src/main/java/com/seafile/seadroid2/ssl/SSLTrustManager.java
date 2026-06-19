@@ -6,6 +6,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.seafile.seadroid2.SeadroidApplication;
 import com.seafile.seadroid2.account.Account;
 import com.seafile.seadroid2.framework.util.ConcurrentAsyncTask;
 
@@ -26,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 
 import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.KeyManager;
 import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
@@ -91,6 +93,24 @@ public final class SSLTrustManager {
         return new TrustManager[]{mgr};
     }
 
+    /**
+     * Build the client-side {@link KeyManager}s for mutual TLS (mTLS).
+     * <p>
+     * If the user has bound a client certificate to this account (an alias picked from
+     * the Android system KeyChain), return a {@link KeyChainKeyManager} that presents it
+     * during the handshake. Otherwise return {@code null}, which leaves the connection as
+     * an ordinary one-way TLS connection.
+     */
+    public KeyManager[] getKeyManagers(Account account) {
+        String alias = ClientCertManager.instance().getAlias(account);
+        if (alias == null || alias.isEmpty()) {
+            return null;
+        }
+
+        Log.d(DEBUG_TAG, "using client certificate alias '" + alias + "' for " + account.getServer());
+        return new KeyManager[]{new KeyChainKeyManager(SeadroidApplication.getAppContext(), alias)};
+    }
+
     public synchronized SSLSocketFactory getSSLSocketFactory(Account account) {
         SSLSocketFactory factory = cachedFactories.get(account);
 
@@ -100,7 +120,8 @@ public final class SSLTrustManager {
 
         try {
             TrustManager[] mgrs = getTrustManagers(account);
-            factory = new SSLSeafileSocketFactory(null, mgrs, new SecureRandom());
+            KeyManager[] keyManagers = getKeyManagers(account);
+            factory = new SSLSeafileSocketFactory(keyManagers, mgrs, new SecureRandom());
             Log.d(DEBUG_TAG, "a SSLSocketFactory is created:" + factory);
         } catch (Exception e) {
             Log.e(DEBUG_TAG, "error when create SSLSocketFactory", e);
@@ -111,6 +132,20 @@ public final class SSLTrustManager {
         }
 
         return factory;
+    }
+
+    /**
+     * Drop any cached trust manager / socket factory for this account, so the next
+     * request rebuilds them. Call this after the account's client certificate binding
+     * changes, otherwise a stale factory (built with the old, or no, client cert) would
+     * keep being reused.
+     */
+    public synchronized void invalidate(Account account) {
+        if (account == null) {
+            return;
+        }
+        cachedFactories.remove(account);
+        managers.remove(account);
     }
 
     public List<X509Certificate> getCertsChainForAccount(Account account) {

@@ -3,6 +3,7 @@ package com.seafile.seadroid2.ui.account;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.security.KeyChain;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
@@ -28,6 +29,7 @@ import com.seafile.seadroid2.config.Constants;
 import com.seafile.seadroid2.databinding.AccountDetailBinding;
 import com.seafile.seadroid2.framework.util.Utils;
 import com.seafile.seadroid2.ssl.CertsManager;
+import com.seafile.seadroid2.ssl.ClientCertManager;
 import com.seafile.seadroid2.ui.base.BaseActivityWithVM;
 import com.seafile.seadroid2.ui.dialog.SslConfirmDialog;
 
@@ -45,6 +47,13 @@ public class AccountDetailActivity extends BaseActivityWithVM<AccountViewModel> 
     private AccountDetailBinding binding;
     private boolean serverTextHasFocus;
     private String mSessionKey;
+
+    /**
+     * Alias of the client certificate (mTLS) chosen from the system KeyChain for this
+     * account. Held here while the form is being filled and persisted in {@link #login()}
+     * just before the account is used, so it is bound to the right account signature.
+     */
+    private String pendingClientCertAlias;
 
     /**
      * Called when the activity is first created.
@@ -72,6 +81,7 @@ public class AccountDetailActivity extends BaseActivityWithVM<AccountViewModel> 
         binding.loginButton.setOnClickListener(v -> login());
 
         setupServerText();
+        setupClientCert();
 
         Intent intent = getIntent();
 
@@ -96,6 +106,13 @@ public class AccountDetailActivity extends BaseActivityWithVM<AccountViewModel> 
             binding.serverUrl.setText(server);
             binding.emailAddress.setText(email);
             binding.emailAddress.requestFocus();
+
+            // preload any client certificate already bound to this account
+            Account existing = new Account();
+            existing.server = server;
+            existing.email = email;
+            pendingClientCertAlias = ClientCertManager.instance().getAlias(existing);
+            updateClientCertStatus();
 
             binding.seahubUrlHint.setVisibility(View.GONE);
         } else if (defaultServerUri != null) {
@@ -382,6 +399,52 @@ public class AccountDetailActivity extends BaseActivityWithVM<AccountViewModel> 
     }
 
 
+    private void setupClientCert() {
+        binding.clientCertButton.setOnClickListener(v -> chooseClientCert());
+        binding.clientCertClear.setOnClickListener(v -> {
+            pendingClientCertAlias = null;
+            updateClientCertStatus();
+        });
+        updateClientCertStatus();
+    }
+
+    /**
+     * Opens the Android system credential picker (KeyChain) so the user can pick a
+     * client certificate installed on the device. The private key stays in the OS
+     * keystore; we only remember the chosen alias.
+     */
+    private void chooseClientCert() {
+        String host = null;
+        int port = -1;
+        String serverURL = binding.serverUrl.getText().toString().trim();
+        try {
+            if (!TextUtils.isEmpty(serverURL)) {
+                URI uri = new URI(serverURL);
+                host = uri.getHost();
+                port = uri.getPort();
+            }
+        } catch (URISyntaxException ignored) {
+        }
+
+        KeyChain.choosePrivateKeyAlias(this, alias -> runOnUiThread(() -> {
+            // alias is null when the user cancels; keep the previous selection in that case
+            if (alias != null) {
+                pendingClientCertAlias = alias;
+                updateClientCertStatus();
+            }
+        }), new String[]{"RSA", "EC"}, null, host, port, null);
+    }
+
+    private void updateClientCertStatus() {
+        if (TextUtils.isEmpty(pendingClientCertAlias)) {
+            binding.clientCertStatus.setText(R.string.client_cert_none);
+            binding.clientCertClear.setVisibility(View.GONE);
+        } else {
+            binding.clientCertStatus.setText(getString(R.string.client_cert_selected, pendingClientCertAlias));
+            binding.clientCertClear.setVisibility(View.VISIBLE);
+        }
+    }
+
     private void login() {
         String serverURL = binding.serverUrl.getText().toString().trim();
         String email = binding.emailAddress.getText().toString().trim();
@@ -453,6 +516,11 @@ public class AccountDetailActivity extends BaseActivityWithVM<AccountViewModel> 
         }
 
         Account tempAccount = new Account(null, serverURL, email, null, null, false, mSessionKey, String.valueOf(System.currentTimeMillis()));
+
+        // bind (or clear) the chosen client certificate to this account before the login
+        // request is made, so the mTLS handshake during login already presents it
+        ClientCertManager.instance().saveAlias(tempAccount, pendingClientCertAlias);
+
         getViewModel().login(tempAccount, passwd, authToken, rememberDevice);
 
     }

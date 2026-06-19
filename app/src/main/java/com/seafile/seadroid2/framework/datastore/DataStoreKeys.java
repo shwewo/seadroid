@@ -37,6 +37,13 @@ public class DataStoreKeys {
 
     public static final String KEY_SERVER_CERT_INFO = "key_server_cert_info";
 
+    /**
+     * Per-account alias of the client certificate (mTLS) chosen from the Android
+     * system KeyChain. Stored keyed by the account signature, so two accounts on the
+     * same server can use different client certificates.
+     */
+    public static final String KEY_CLIENT_CERT_ALIAS = "key_client_cert_alias";
+
     public static final String KEY_GLOBAL_NAV_CONTEXT_STACK = "key_nav_context_stack";
     public static final String KEY_NAV_CONTEXT_STACK_OF_SHARE_TO_SEAFILE = "key_nav_context_stack_of_share_to_seafile";
     /**

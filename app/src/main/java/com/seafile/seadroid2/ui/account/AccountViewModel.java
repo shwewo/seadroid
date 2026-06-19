@@ -20,6 +20,7 @@ import com.seafile.seadroid2.account.AccountUtils;
 import com.seafile.seadroid2.framework.util.DeviceIdManager;
 import com.seafile.seadroid2.framework.util.ExceptionUtils;
 import com.seafile.seadroid2.ssl.CertsManager;
+import com.seafile.seadroid2.ssl.ClientCertManager;
 import com.seafile.seadroid2.baseviewmodel.BaseViewModel;
 import com.seafile.seadroid2.ui.main.MainService;
 
@@ -230,6 +231,7 @@ public class AccountViewModel extends BaseViewModel {
         } else {
             HttpManager.removeHttpWithAccount(account);
             CertsManager.instance().deleteCertForAccount(account);
+            ClientCertManager.instance().deleteAlias(account);
         }
 
         //delete local account
