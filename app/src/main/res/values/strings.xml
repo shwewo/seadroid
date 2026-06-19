@@ -304,6 +304,12 @@
     <string name="client_cert_none">No client certificate selected</string>
     <string name="client_cert_selected">Client certificate: %s</string>
     <string name="client_cert_none_installed">No client certificate is installed on this device. Install a .p12/.pfx via Settings &#8594; Security first.</string>
+    <string name="client_cert_source_keychain">Choose from Android keystore</string>
+    <string name="client_cert_source_p12">Import .p12 / .pfx file</string>
+    <string name="client_cert_p12_password_title">Certificate password</string>
+    <string name="client_cert_p12_password_hint">Password (leave empty if none)</string>
+    <string name="client_cert_p12_wrong_password">Wrong password</string>
+    <string name="client_cert_import_failed">Could not read the certificate file</string>
     <string name="issued_to">Issued To</string>
     <string name="finger_prints">Fingerprints</string>
     <string name="period_of_validity">Period of Validity</string>

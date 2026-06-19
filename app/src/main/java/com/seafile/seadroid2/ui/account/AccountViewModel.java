@@ -231,8 +231,11 @@ public class AccountViewModel extends BaseViewModel {
         } else {
             HttpManager.removeHttpWithAccount(account);
             CertsManager.instance().deleteCertForAccount(account);
-            ClientCertManager.instance().deleteAlias(account);
         }
+
+        // The account is being permanently removed, so drop its client-cert (mTLS) binding.
+        // Done here (not in logout) so a plain sign-out keeps the binding for re-login.
+        ClientCertManager.instance().deleteBinding(account);
 
         //delete local account
         SupportAccountManager.getInstance().removeAccount(account.getAndroidAccount(), null, null);

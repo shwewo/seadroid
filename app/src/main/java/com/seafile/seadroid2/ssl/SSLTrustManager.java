@@ -96,19 +96,22 @@ public final class SSLTrustManager {
     /**
      * Build the client-side {@link KeyManager}s for mutual TLS (mTLS).
      * <p>
-     * If the user has bound a client certificate to this account (an alias picked from
-     * the Android system KeyChain), return a {@link KeyChainKeyManager} that presents it
-     * during the handshake. Otherwise return {@code null}, which leaves the connection as
-     * an ordinary one-way TLS connection.
+     * The alias is resolved <b>per handshake</b> (via {@link ClientCertManager}) rather than
+     * baked into the returned KeyManager. This matters because the resulting socket factory
+     * is cached (here, keyed by the mutable {@link Account}) and the {@code OkHttpClient}
+     * built from it is cached again one layer up in {@code HttpManager}. With a fixed alias,
+     * a factory built before the user picked/changed the cert could be reused and silently
+     * present the wrong (or no) certificate until the app was restarted. Resolving the alias
+     * lazily means even a cached factory always presents the account's current certificate.
+     * <p>
+     * If no certificate is bound, the alias resolves to {@code null} and no client cert is
+     * sent - an ordinary one-way TLS connection. The lookup keys off the account signature
+     * (server + email), which is stable even as {@code token}/{@code name} change during login.
      */
     public KeyManager[] getKeyManagers(Account account) {
-        String alias = ClientCertManager.instance().getAlias(account);
-        if (alias == null || alias.isEmpty()) {
-            return null;
-        }
-
-        Log.d(DEBUG_TAG, "using client certificate alias '" + alias + "' for " + account.getServer());
-        return new KeyManager[]{new KeyChainKeyManager(SeadroidApplication.getAppContext(), alias)};
+        return new KeyManager[]{
+                new ClientCertKeyManager(SeadroidApplication.getAppContext(), () -> account)
+        };
     }
 
     public synchronized SSLSocketFactory getSSLSocketFactory(Account account) {

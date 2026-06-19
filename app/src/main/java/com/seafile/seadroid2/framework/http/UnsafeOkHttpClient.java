@@ -5,8 +5,7 @@ import com.blankj.utilcode.util.CollectionUtils;
 import com.seafile.seadroid2.SeadroidApplication;
 import com.seafile.seadroid2.account.Account;
 import com.seafile.seadroid2.account.SupportAccountManager;
-import com.seafile.seadroid2.ssl.ClientCertManager;
-import com.seafile.seadroid2.ssl.KeyChainKeyManager;
+import com.seafile.seadroid2.ssl.ClientCertKeyManager;
 
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
@@ -65,12 +64,10 @@ public class UnsafeOkHttpClient extends BaseOkHttpClient {
      * when no client certificate is configured, leaving an ordinary TLS connection.
      */
     private KeyManager[] getKeyManagers() {
-        return new KeyManager[]{new KeyChainKeyManager(SeadroidApplication.getAppContext(), () -> {
-            Account account = specialAccount != null
-                    ? specialAccount
-                    : SupportAccountManager.getInstance().getCurrentAccount();
-            return account == null ? null : ClientCertManager.instance().getAlias(account);
-        })};
+        return new KeyManager[]{new ClientCertKeyManager(SeadroidApplication.getAppContext(),
+                () -> specialAccount != null
+                        ? specialAccount
+                        : SupportAccountManager.getInstance().getCurrentAccount())};
     }
 
     public OkHttpClient.Builder getBuilder() {

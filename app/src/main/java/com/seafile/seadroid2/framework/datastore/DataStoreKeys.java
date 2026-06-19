@@ -38,11 +38,20 @@ public class DataStoreKeys {
     public static final String KEY_SERVER_CERT_INFO = "key_server_cert_info";
 
     /**
-     * Per-account alias of the client certificate (mTLS) chosen from the Android
-     * system KeyChain. Stored keyed by the account signature, so two accounts on the
-     * same server can use different client certificates.
+     * Per-account client certificate (mTLS) binding, keyed by the account signature so two
+     * accounts on the same server can use different client certificates. The cert can come
+     * from two sources, selected by KEY_CLIENT_CERT_TYPE ("keychain" or "p12"):
+     *  - keychain: an alias picked from the Android system KeyChain (KEY_CLIENT_CERT_ALIAS).
+     *  - p12: an imported .p12/.pfx file copied into app storage (KEY_CLIENT_CERT_P12_PATH),
+     *    with its password stored encrypted (KEY_CLIENT_CERT_P12_PWD + _IV).
+     * KEY_CLIENT_CERT_NAME is a human-readable label for the UI.
      */
+    public static final String KEY_CLIENT_CERT_TYPE = "key_client_cert_type";
     public static final String KEY_CLIENT_CERT_ALIAS = "key_client_cert_alias";
+    public static final String KEY_CLIENT_CERT_P12_PATH = "key_client_cert_p12_path";
+    public static final String KEY_CLIENT_CERT_P12_PWD = "key_client_cert_p12_pwd";
+    public static final String KEY_CLIENT_CERT_P12_IV = "key_client_cert_p12_iv";
+    public static final String KEY_CLIENT_CERT_NAME = "key_client_cert_name";
 
     public static final String KEY_GLOBAL_NAV_CONTEXT_STACK = "key_nav_context_stack";
     public static final String KEY_NAV_CONTEXT_STACK_OF_SHARE_TO_SEAFILE = "key_nav_context_stack_of_share_to_seafile";

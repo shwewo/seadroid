@@ -14,7 +14,6 @@ import com.seafile.seadroid2.framework.util.SLogs;
 import com.seafile.seadroid2.framework.worker.BackgroundJobManagerImpl;
 import com.seafile.seadroid2.preferences.Settings;
 import com.seafile.seadroid2.ssl.CertsManager;
-import com.seafile.seadroid2.ssl.ClientCertManager;
 import com.seafile.seadroid2.ui.camera_upload.CameraUploadManager;
 
 public class AccountUtils {
@@ -31,7 +30,9 @@ public class AccountUtils {
 
         //
         CertsManager.instance().deleteCertForAccount(account);
-        ClientCertManager.instance().deleteAlias(account);
+        // NOTE: the client-cert (mTLS) binding is intentionally NOT removed on sign-out, so
+        // signing back in works without re-picking the certificate. It is dropped only when
+        // the account is permanently removed (see AccountViewModel.deleteAccount).
 
         NotificationUtils.cancelAll();
 

@@ -2,6 +2,7 @@ package com.seafile.seadroid2.ui.account;
 
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.security.KeyChain;
 import android.text.Editable;
@@ -12,21 +13,29 @@ import android.util.Pair;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.NavUtils;
 import androidx.core.app.TaskStackBuilder;
 import androidx.lifecycle.Observer;
 
 import com.blankj.utilcode.util.NetworkUtils;
+import com.blankj.utilcode.util.ToastUtils;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.textfield.TextInputLayout;
 import com.seafile.seadroid2.R;
 import com.seafile.seadroid2.SeafException;
 import com.seafile.seadroid2.account.Account;
 import com.seafile.seadroid2.account.Authenticator;
 import com.seafile.seadroid2.config.Constants;
 import com.seafile.seadroid2.databinding.AccountDetailBinding;
+import com.seafile.seadroid2.framework.util.ContentResolvers;
 import com.seafile.seadroid2.framework.util.Utils;
 import com.seafile.seadroid2.ssl.CertsManager;
 import com.seafile.seadroid2.ssl.ClientCertManager;
@@ -49,11 +58,23 @@ public class AccountDetailActivity extends BaseActivityWithVM<AccountViewModel> 
     private String mSessionKey;
 
     /**
-     * Alias of the client certificate (mTLS) chosen from the system KeyChain for this
-     * account. Held here while the form is being filled and persisted in {@link #login()}
-     * just before the account is used, so it is bound to the right account signature.
+     * The client certificate (mTLS) selection made on this screen, if any. Held here while
+     * the form is being filled and persisted in {@link #login()} just before the account is
+     * used, so it is bound to the right account signature. {@code null} means "no change" -
+     * any previously stored binding is left as-is.
      */
-    private String pendingClientCertAlias;
+    private PendingCert pendingCert;
+    private ActivityResultLauncher<String[]> p12PickerLauncher;
+
+    /** A not-yet-persisted client cert choice (KeyChain alias, imported .p12, or removal). */
+    private static class PendingCert {
+        boolean cleared;                  // user tapped "Remove"
+        ClientCertManager.Type type;      // otherwise KEYCHAIN or P12
+        String alias;                     // KEYCHAIN
+        byte[] p12Data;                   // P12 (already validated against p12Password)
+        String p12Password;               // P12
+        String displayName;
+    }
 
     /**
      * Called when the activity is first created.
@@ -107,11 +128,7 @@ public class AccountDetailActivity extends BaseActivityWithVM<AccountViewModel> 
             binding.emailAddress.setText(email);
             binding.emailAddress.requestFocus();
 
-            // preload any client certificate already bound to this account
-            Account existing = new Account();
-            existing.server = server;
-            existing.email = email;
-            pendingClientCertAlias = ClientCertManager.instance().getAlias(existing);
+            // show any client certificate already bound to this account
             updateClientCertStatus();
 
             binding.seahubUrlHint.setVisibility(View.GONE);
@@ -400,20 +417,47 @@ public class AccountDetailActivity extends BaseActivityWithVM<AccountViewModel> 
 
 
     private void setupClientCert() {
-        binding.clientCertButton.setOnClickListener(v -> chooseClientCert());
+        p12PickerLauncher = registerForActivityResult(new ActivityResultContracts.OpenDocument(), uri -> {
+            if (uri != null) {
+                onP12Picked(uri);
+            }
+        });
+
+        binding.clientCertButton.setOnClickListener(v -> showCertSourceChooser());
         binding.clientCertClear.setOnClickListener(v -> {
-            pendingClientCertAlias = null;
+            PendingCert p = new PendingCert();
+            p.cleared = true;
+            pendingCert = p;
             updateClientCertStatus();
         });
         updateClientCertStatus();
     }
 
+    /** Lets the user choose where the client certificate comes from: KeyChain or a .p12 file. */
+    private void showCertSourceChooser() {
+        CharSequence[] items = {
+                getString(R.string.client_cert_source_keychain),
+                getString(R.string.client_cert_source_p12)
+        };
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.client_cert_choose)
+                .setItems(items, (dialog, which) -> {
+                    if (which == 0) {
+                        chooseFromKeyChain();
+                    } else {
+                        p12PickerLauncher.launch(new String[]{
+                                "application/x-pkcs12", "application/pkcs12",
+                                "application/octet-stream", "*/*"});
+                    }
+                })
+                .show();
+    }
+
     /**
-     * Opens the Android system credential picker (KeyChain) so the user can pick a
-     * client certificate installed on the device. The private key stays in the OS
+     * Opens the Android system credential picker (KeyChain). The private key stays in the OS
      * keystore; we only remember the chosen alias.
      */
-    private void chooseClientCert() {
+    private void chooseFromKeyChain() {
         String host = null;
         int port = -1;
         String serverURL = binding.serverUrl.getText().toString().trim();
@@ -429,19 +473,117 @@ public class AccountDetailActivity extends BaseActivityWithVM<AccountViewModel> 
         KeyChain.choosePrivateKeyAlias(this, alias -> runOnUiThread(() -> {
             // alias is null when the user cancels; keep the previous selection in that case
             if (alias != null) {
-                pendingClientCertAlias = alias;
+                PendingCert p = new PendingCert();
+                p.type = ClientCertManager.Type.KEYCHAIN;
+                p.alias = alias;
+                p.displayName = alias;
+                pendingCert = p;
                 updateClientCertStatus();
             }
         }), new String[]{"RSA", "EC"}, null, host, port, null);
     }
 
+    private void onP12Picked(Uri uri) {
+        byte[] data = ContentResolvers.getFileContentFromUri(getContentResolver(), uri);
+        if (data == null || data.length == 0) {
+            ToastUtils.showShort(R.string.client_cert_import_failed);
+            return;
+        }
+        String name = ContentResolvers.getFileNameFromUri(getContentResolver(), uri);
+        if (TextUtils.isEmpty(name)) {
+            name = "client.p12";
+        }
+        promptP12Password(data, name);
+    }
+
+    /** Asks for the .p12 password and validates it before accepting the import. */
+    private void promptP12Password(byte[] data, String displayName) {
+        View view = getLayoutInflater().inflate(R.layout.dialog_p12_password, null);
+        TextInputLayout layout = view.findViewById(R.id.p12_password_layout);
+        EditText input = view.findViewById(R.id.p12_password_input);
+
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.client_cert_p12_password_title)
+                .setMessage(displayName)
+                .setView(view)
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.ok, null) // overridden below so a wrong password keeps the dialog open
+                .create();
+
+        dialog.setOnShowListener(d -> {
+            Button positive = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            positive.setOnClickListener(v -> {
+                String pwd = input.getText().toString();
+                ClientCertManager.ImportResult r = ClientCertManager.instance().validateP12(data, pwd);
+                if (r == ClientCertManager.ImportResult.SUCCESS) {
+                    PendingCert p = new PendingCert();
+                    p.type = ClientCertManager.Type.P12;
+                    p.p12Data = data;
+                    p.p12Password = pwd;
+                    p.displayName = displayName;
+                    pendingCert = p;
+                    updateClientCertStatus();
+                    dialog.dismiss();
+                } else if (r == ClientCertManager.ImportResult.WRONG_PASSWORD) {
+                    layout.setError(getString(R.string.client_cert_p12_wrong_password));
+                } else {
+                    layout.setError(getString(R.string.client_cert_import_failed));
+                }
+            });
+        });
+        dialog.show();
+    }
+
     private void updateClientCertStatus() {
-        if (TextUtils.isEmpty(pendingClientCertAlias)) {
+        String label = null;
+
+        if (pendingCert != null) {
+            // an unsaved choice was made on this screen
+            if (!pendingCert.cleared) {
+                label = pendingCert.displayName;
+            }
+        } else {
+            // no change this session: reflect what is already stored for this account
+            Account acc = currentFormAccount();
+            if (acc != null) {
+                label = ClientCertManager.instance().getDisplayName(acc);
+            }
+        }
+
+        if (TextUtils.isEmpty(label)) {
             binding.clientCertStatus.setText(R.string.client_cert_none);
             binding.clientCertClear.setVisibility(View.GONE);
         } else {
-            binding.clientCertStatus.setText(getString(R.string.client_cert_selected, pendingClientCertAlias));
+            binding.clientCertStatus.setText(getString(R.string.client_cert_selected, label));
             binding.clientCertClear.setVisibility(View.VISIBLE);
+        }
+    }
+
+    /** A lightweight account built from the current form fields, for looking up its cert binding. */
+    private Account currentFormAccount() {
+        String server = binding.serverUrl.getText().toString().trim();
+        String email = binding.emailAddress.getText().toString().trim();
+        if (TextUtils.isEmpty(server) || TextUtils.isEmpty(email)) {
+            return null;
+        }
+        Account a = new Account();
+        a.server = server;
+        a.email = email;
+        return a;
+    }
+
+    /** Persists the pending client-cert choice (if any) against the given account. */
+    private void persistPendingCert(Account account) {
+        if (pendingCert == null) {
+            return;
+        }
+        ClientCertManager mgr = ClientCertManager.instance();
+        if (pendingCert.cleared) {
+            mgr.deleteBinding(account);
+        } else if (pendingCert.type == ClientCertManager.Type.KEYCHAIN) {
+            mgr.saveKeyChainAlias(account, pendingCert.alias);
+        } else if (pendingCert.type == ClientCertManager.Type.P12) {
+            mgr.importP12(account, pendingCert.p12Data, pendingCert.p12Password, pendingCert.displayName);
         }
     }
 
@@ -519,7 +661,7 @@ public class AccountDetailActivity extends BaseActivityWithVM<AccountViewModel> 
 
         // bind (or clear) the chosen client certificate to this account before the login
         // request is made, so the mTLS handshake during login already presents it
-        ClientCertManager.instance().saveAlias(tempAccount, pendingClientCertAlias);
+        persistPendingCert(tempAccount);
 
         getViewModel().login(tempAccount, passwd, authToken, rememberDevice);
 
