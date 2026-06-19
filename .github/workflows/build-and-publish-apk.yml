@@ -1,8 +1,9 @@
 name: Build & Publish APK
 
-# Builds both the debug and release APKs and publishes them:
-#   - push to master / manual run  -> updates a rolling "latest" pre-release
-#   - push a tag like v4.0.9        -> cuts a versioned GitHub Release
+# Builds both the debug and release APKs and publishes each build as its own
+# versioned GitHub Release (newest is marked "Latest" automatically):
+#   - push to master / manual run  -> new release tagged v<versionName>-<run#>
+#   - push a tag like v4.1.0        -> release using that exact tag
 # Every run also uploads both APKs as a workflow artifact.
 #
 # Published assets are named seafile-debug.apk and seafile-release.apk.
@@ -102,7 +103,23 @@ jobs:
           [ -n "$rel" ] || { echo "No release APK produced" >&2; exit 1; }
           cp "$dbg" dist/seafile-debug.apk
           cp "$rel" dist/seafile-release.apk
-          echo "short_sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+          ver="$(grep -oP 'versionName\s+"\K[^"]+' app/build.gradle | head -n1)"
+          short_sha="$(git rev-parse --short HEAD)"
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            # a v* tag was pushed: use it verbatim
+            tag="${GITHUB_REF_NAME}"
+            relname="${GITHUB_REF_NAME}"
+          else
+            # master push / manual run: one unique release per build
+            tag="v${ver}-${GITHUB_RUN_NUMBER}"
+            relname="v${ver} (build ${GITHUB_RUN_NUMBER})"
+          fi
+
+          echo "version=$ver"        >> "$GITHUB_OUTPUT"
+          echo "short_sha=$short_sha" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag"            >> "$GITHUB_OUTPUT"
+          echo "relname=$relname"    >> "$GITHUB_OUTPUT"
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
@@ -111,27 +128,17 @@ jobs:
           path: dist/*.apk
           retention-days: 30
 
-      - name: Publish versioned release (tag)
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            dist/seafile-release.apk
-            dist/seafile-debug.apk
-          generate_release_notes: true
-
-      - name: Publish rolling "latest" pre-release (master / manual)
-        if: github.ref == 'refs/heads/master'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest
-          name: Latest build (master)
-          prerelease: true
+          tag_name: ${{ steps.apk.outputs.tag }}
+          name: ${{ steps.apk.outputs.relname }}
+          target_commitish: ${{ github.sha }}
           files: |
             dist/seafile-release.apk
             dist/seafile-debug.apk
           body: |
-            Automated build from the tip of `master`.
+            App version `${{ steps.apk.outputs.version }}`.
 
             - Commit: ${{ steps.apk.outputs.short_sha }}
             - Built from run [${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
