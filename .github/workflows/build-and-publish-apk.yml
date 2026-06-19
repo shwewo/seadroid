@@ -1,14 +1,22 @@
 name: Build & Publish APK
 
-# Builds the (debug-signed) APK and publishes it:
+# Builds both the debug and release APKs and publishes them:
 #   - push to master / manual run  -> updates a rolling "latest" pre-release
 #   - push a tag like v4.0.9        -> cuts a versioned GitHub Release
-# Every run also uploads the APK as a workflow artifact.
+# Every run also uploads both APKs as a workflow artifact.
 #
-# Debug signing is used (AGP's default debug keystore) so no secrets are needed.
-# The build still requires app/key.properties to exist at configuration time because
-# the release signingConfig reads it eagerly; we provide the committed example, whose
-# keystore is never actually accessed by assembleDebug.
+# Published assets are named seafile-debug.apk and seafile-release.apk.
+#
+# Release signing:
+#   Set repository secrets to sign the release with a STABLE key (so installs can be
+#   updated in place across builds):
+#     SIGNING_KEYSTORE_BASE64  - base64 of your .keystore/.jks  (base64 -w0 my.keystore)
+#     SIGNING_STORE_PASSWORD
+#     SIGNING_KEY_ALIAS
+#     SIGNING_KEY_PASSWORD
+#   If SIGNING_KEYSTORE_BASE64 is not set, the release is signed with an ephemeral key
+#   generated per-run (it still builds, but cannot be updated over a previous install).
+#   The debug APK is always signed with Gradle's debug key.
 
 on:
   push:
@@ -26,7 +34,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -43,46 +51,73 @@ jobs:
 
       # The native heicgen build uses CMake + NDK. AGP 8.8 has no pinned ndkVersion,
       # so install its default NDK (r27) and CMake to keep CI deterministic.
-      # If a build ever fails on an NDK version mismatch, bump the version here.
       - name: Install NDK & CMake
         run: sdkmanager "ndk;27.0.12077973" "cmake;3.22.1"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Provide key.properties (debug signing)
-        run: cp app/key.properties.example app/key.properties
+      # The release signingConfig reads app/key.properties at configuration time (needed even
+      # for the debug build). Provide a real release keystore from secrets, or an ephemeral one.
+      - name: Prepare signing config
+        env:
+          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          STORE_PW: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          KEY_PW: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > app/release.keystore
+            {
+              echo "keyStore=release.keystore"
+              echo "keyStorePassword=$STORE_PW"
+              echo "keyAlias=$KEY_ALIAS"
+              echo "keyAliasPassword=$KEY_PW"
+            } > app/key.properties
+            echo "Signing release with key from secrets."
+          else
+            echo "::warning::No SIGNING_KEYSTORE_BASE64 secret set; signing release with an ephemeral key (installs are not updatable across builds)."
+            keytool -genkeypair -keystore app/release.keystore -storepass ephemeral -keypass ephemeral \
+              -alias ci -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=seadroid-ci"
+            {
+              echo "keyStore=release.keystore"
+              echo "keyStorePassword=ephemeral"
+              echo "keyAlias=ci"
+              echo "keyAliasPassword=ephemeral"
+            } > app/key.properties
+          fi
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+      - name: Build debug + release APKs
+        run: ./gradlew assembleDebug assembleRelease --no-daemon --stacktrace
 
-      - name: Collect APK
+      - name: Collect APKs
         id: apk
         run: |
           set -euo pipefail
           mkdir -p dist
-          src="$(find app/build/outputs/apk/debug -name '*.apk' | head -n1)"
-          if [ -z "$src" ]; then echo "No APK produced" >&2; exit 1; fi
-          ver="$(basename "$src" .apk)"          # e.g. seafile-debug-4.0.9
-          sha="$(git rev-parse --short HEAD)"
-          versioned="dist/${ver}-${sha}.apk"
-          cp "$src" "$versioned"
-          cp "$src" "dist/seadroid-latest.apk"   # stable name so the rolling release overwrites
-          echo "versioned=$versioned" >> "$GITHUB_OUTPUT"
-          echo "artifact_name=${ver}-${sha}" >> "$GITHUB_OUTPUT"
+          dbg="$(find app/build/outputs/apk/debug -name '*.apk' | head -n1)"
+          rel="$(find app/build/outputs/apk/release -name '*.apk' | head -n1)"
+          [ -n "$dbg" ] || { echo "No debug APK produced" >&2; exit 1; }
+          [ -n "$rel" ] || { echo "No release APK produced" >&2; exit 1; }
+          cp "$dbg" dist/seafile-debug.apk
+          cp "$rel" dist/seafile-release.apk
+          echo "short_sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.apk.outputs.artifact_name }}
-          path: ${{ steps.apk.outputs.versioned }}
+          name: seafile-apks-${{ steps.apk.outputs.short_sha }}
+          path: dist/*.apk
           retention-days: 30
 
       - name: Publish versioned release (tag)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ steps.apk.outputs.versioned }}
+          files: |
+            dist/seafile-release.apk
+            dist/seafile-debug.apk
           generate_release_notes: true
 
       - name: Publish rolling "latest" pre-release (master / manual)
@@ -92,12 +127,15 @@ jobs:
           tag_name: latest
           name: Latest build (master)
           prerelease: true
-          files: dist/seadroid-latest.apk
+          files: |
+            dist/seafile-release.apk
+            dist/seafile-debug.apk
           body: |
-            Automated **debug-signed** build from the tip of `master`.
+            Automated build from the tip of `master`.
 
-            - Commit: ${{ github.sha }}
-            - Built: run #${{ github.run_number }}
+            - Commit: ${{ steps.apk.outputs.short_sha }}
+            - Built from run [${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
-            > Debug build: package id has a `.debug` suffix, so it installs **alongside**
-            > any Play Store / release build rather than replacing it.
+            **seafile-release.apk** — optimized release build (minified/R8).
+            **seafile-debug.apk** — debug build; its package id has a `.debug` suffix, so it
+            installs **alongside** a release/Play Store build rather than replacing it.

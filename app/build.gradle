@@ -121,6 +121,12 @@ android {
             signingConfig signingConfigs.release
             minifyEnabled true
 
+            // This is a fork; don't try to upload the ProGuard mapping to the upstream
+            // Firebase/Crashlytics project (it would fail or pollute it, and blocks CI).
+            firebaseCrashlytics {
+                mappingFileUploadEnabled false
+            }
+
             resValue "string", "authorities", defaultConfig.applicationId + '.cameraupload.provider'
             resValue "string", "account_type", defaultConfig.applicationId + ".account.api2"
 
