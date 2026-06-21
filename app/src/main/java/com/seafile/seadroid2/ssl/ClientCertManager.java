@@ -4,6 +4,7 @@ import android.content.SharedPreferences;
 import android.text.TextUtils;
 import android.util.Pair;
 
+import com.blankj.utilcode.util.EncryptUtils;
 import com.seafile.seadroid2.SeadroidApplication;
 import com.seafile.seadroid2.account.Account;
 import com.seafile.seadroid2.framework.crypto.SecurePasswordManager;
@@ -16,6 +17,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.security.KeyStore;
 import java.util.Enumeration;
+import java.util.Locale;
 
 /**
  * Stores, per account, the client certificate (mTLS) the user picked. The binding is keyed
@@ -30,6 +32,18 @@ import java.util.Enumeration;
  *       (Android-Keystore-backed).</li>
  * </ul>
  * The actual key material is resolved on demand by {@link ClientCertKeyManager}.
+ * <p>
+ * Bindings live in one of two <i>scopes</i>:
+ * <ul>
+ *   <li><b>account scope</b> — keyed by the account signature (server + email); set from
+ *       {@code AccountDetailActivity} and used by a fully-formed account.</li>
+ *   <li><b>host scope</b> — keyed by the server host alone, with no email. This is what the
+ *       SSO login flow uses: at that point no account exists yet (the WebView and the
+ *       pre-flight calls only know the server), and a client cert that gates the perimeter is
+ *       a property of the host, not of any one user. {@link ClientCertKeyManager} falls back to
+ *       the host binding when an account has none of its own, so the same cert keeps being
+ *       presented once the SSO login resolves into a real account.</li>
+ * </ul>
  */
 public final class ClientCertManager {
 
@@ -48,6 +62,7 @@ public final class ClientCertManager {
         public String alias;        // KEYCHAIN
         public String p12Path;      // P12
         public String displayName;  // for UI
+        public String scopeId;      // the storage scope this was read from (account or host)
     }
 
     private static ClientCertManager instance;
@@ -63,60 +78,105 @@ public final class ClientCertManager {
         return Settings.getCommonPreferences();
     }
 
-    private static String key(String base, Account account) {
-        return base + "_" + account.getEncryptSignature();
+    private static String key(String base, String scopeId) {
+        return base + "_" + scopeId;
     }
 
-    private static File p12File(Account account) {
+    private static File p12File(String scopeId) {
         File dir = new File(SeadroidApplication.getAppContext().getFilesDir(), P12_DIR);
-        return new File(dir, account.getEncryptSignature() + ".p12");
+        return new File(dir, scopeId + ".p12");
+    }
+
+    /** Storage scope for a fully-formed account: keyed by its signature (server + email). */
+    private static String accountScope(Account account) {
+        return account.getEncryptSignature();
+    }
+
+    /**
+     * Storage scope for a bare host (no email). Accepts either a full server URL
+     * ({@code https://host:port/}) or an already-stripped {@code host:port}, and normalizes
+     * both to the same key so a cert picked during SSO is found again by the resulting account.
+     */
+    private static String hostScope(String serverOrHost) {
+        return "host_" + EncryptUtils.encryptMD5ToString(normalizeHost(serverOrHost));
+    }
+
+    private static String normalizeHost(String serverOrHost) {
+        if (serverOrHost == null) {
+            return "";
+        }
+        String s = serverOrHost.trim();
+        int scheme = s.indexOf("://");
+        if (scheme != -1) {
+            s = s.substring(scheme + 3);
+        }
+        int slash = s.indexOf('/');
+        if (slash != -1) {
+            s = s.substring(0, slash);
+        }
+        return s.toLowerCase(Locale.ROOT);
     }
 
     // ---- read ----
 
     public ClientCertBinding getBinding(Account account) {
-        if (account == null) {
+        return account == null ? null : getBindingForScope(accountScope(account));
+    }
+
+    /** Host-scoped binding, used by the SSO flow before any account exists. */
+    public ClientCertBinding getBindingForHost(String serverOrHost) {
+        if (TextUtils.isEmpty(serverOrHost)) {
             return null;
         }
+        return getBindingForScope(hostScope(serverOrHost));
+    }
 
-        String type = prefs().getString(key(DataStoreKeys.KEY_CLIENT_CERT_TYPE, account), null);
+    private ClientCertBinding getBindingForScope(String scopeId) {
+        String type = prefs().getString(key(DataStoreKeys.KEY_CLIENT_CERT_TYPE, scopeId), null);
 
         // legacy bindings (pre-p12) stored only the bare alias with no type
         if (type == null) {
-            String alias = prefs().getString(key(DataStoreKeys.KEY_CLIENT_CERT_ALIAS, account), null);
-            return TextUtils.isEmpty(alias) ? null : keychainBinding(alias);
+            String alias = prefs().getString(key(DataStoreKeys.KEY_CLIENT_CERT_ALIAS, scopeId), null);
+            return TextUtils.isEmpty(alias) ? null : keychainBinding(alias, scopeId);
         }
 
         if (TYPE_KEYCHAIN.equals(type)) {
-            String alias = prefs().getString(key(DataStoreKeys.KEY_CLIENT_CERT_ALIAS, account), null);
-            return TextUtils.isEmpty(alias) ? null : keychainBinding(alias);
+            String alias = prefs().getString(key(DataStoreKeys.KEY_CLIENT_CERT_ALIAS, scopeId), null);
+            return TextUtils.isEmpty(alias) ? null : keychainBinding(alias, scopeId);
         }
 
         if (TYPE_P12.equals(type)) {
-            String path = prefs().getString(key(DataStoreKeys.KEY_CLIENT_CERT_P12_PATH, account), null);
+            String path = prefs().getString(key(DataStoreKeys.KEY_CLIENT_CERT_P12_PATH, scopeId), null);
             if (TextUtils.isEmpty(path) || !new File(path).exists()) {
                 return null;
             }
             ClientCertBinding b = new ClientCertBinding();
             b.type = Type.P12;
             b.p12Path = path;
-            b.displayName = prefs().getString(key(DataStoreKeys.KEY_CLIENT_CERT_NAME, account), "client.p12");
+            b.displayName = prefs().getString(key(DataStoreKeys.KEY_CLIENT_CERT_NAME, scopeId), "client.p12");
+            b.scopeId = scopeId;
             return b;
         }
 
         return null;
     }
 
-    private ClientCertBinding keychainBinding(String alias) {
+    private ClientCertBinding keychainBinding(String alias, String scopeId) {
         ClientCertBinding b = new ClientCertBinding();
         b.type = Type.KEYCHAIN;
         b.alias = alias;
         b.displayName = alias;
+        b.scopeId = scopeId;
         return b;
     }
 
     public String getDisplayName(Account account) {
         ClientCertBinding b = getBinding(account);
+        return b == null ? null : b.displayName;
+    }
+
+    public String getDisplayNameForHost(String serverOrHost) {
+        ClientCertBinding b = getBindingForHost(serverOrHost);
         return b == null ? null : b.displayName;
     }
 
@@ -126,11 +186,16 @@ public final class ClientCertManager {
 
     /** Decrypts and returns the imported p12 password; "" if none. Resolved lazily, not in getBinding(). */
     public String getP12Password(Account account) {
-        if (account == null) {
+        return account == null ? "" : getP12PasswordForScope(accountScope(account));
+    }
+
+    /** Decrypts the imported p12 password for a binding's own scope (account or host). */
+    public String getP12PasswordForScope(String scopeId) {
+        if (TextUtils.isEmpty(scopeId)) {
             return "";
         }
-        String enc = prefs().getString(key(DataStoreKeys.KEY_CLIENT_CERT_P12_PWD, account), null);
-        String iv = prefs().getString(key(DataStoreKeys.KEY_CLIENT_CERT_P12_IV, account), null);
+        String enc = prefs().getString(key(DataStoreKeys.KEY_CLIENT_CERT_P12_PWD, scopeId), null);
+        String iv = prefs().getString(key(DataStoreKeys.KEY_CLIENT_CERT_P12_IV, scopeId), null);
         if (TextUtils.isEmpty(enc) || TextUtils.isEmpty(iv)) {
             return "";
         }
@@ -148,18 +213,32 @@ public final class ClientCertManager {
             deleteBinding(account);
             return;
         }
-
-        deleteP12File(account);
-        prefs().edit()
-                .putString(key(DataStoreKeys.KEY_CLIENT_CERT_TYPE, account), TYPE_KEYCHAIN)
-                .putString(key(DataStoreKeys.KEY_CLIENT_CERT_ALIAS, account), alias)
-                .putString(key(DataStoreKeys.KEY_CLIENT_CERT_NAME, account), alias)
-                .remove(key(DataStoreKeys.KEY_CLIENT_CERT_P12_PATH, account))
-                .remove(key(DataStoreKeys.KEY_CLIENT_CERT_P12_PWD, account))
-                .remove(key(DataStoreKeys.KEY_CLIENT_CERT_P12_IV, account))
-                .apply();
-
+        saveKeyChainAliasForScope(accountScope(account), alias);
         SSLTrustManager.instance().invalidate(account);
+    }
+
+    /** Host-scoped variant for the SSO flow; no account to invalidate. */
+    public void saveKeyChainAliasForHost(String serverOrHost, String alias) {
+        if (TextUtils.isEmpty(serverOrHost)) {
+            return;
+        }
+        if (TextUtils.isEmpty(alias)) {
+            deleteBindingForHost(serverOrHost);
+            return;
+        }
+        saveKeyChainAliasForScope(hostScope(serverOrHost), alias);
+    }
+
+    private void saveKeyChainAliasForScope(String scopeId, String alias) {
+        deleteP12File(scopeId);
+        prefs().edit()
+                .putString(key(DataStoreKeys.KEY_CLIENT_CERT_TYPE, scopeId), TYPE_KEYCHAIN)
+                .putString(key(DataStoreKeys.KEY_CLIENT_CERT_ALIAS, scopeId), alias)
+                .putString(key(DataStoreKeys.KEY_CLIENT_CERT_NAME, scopeId), alias)
+                .remove(key(DataStoreKeys.KEY_CLIENT_CERT_P12_PATH, scopeId))
+                .remove(key(DataStoreKeys.KEY_CLIENT_CERT_P12_PWD, scopeId))
+                .remove(key(DataStoreKeys.KEY_CLIENT_CERT_P12_IV, scopeId))
+                .apply();
     }
 
     /**
@@ -195,14 +274,29 @@ public final class ClientCertManager {
         if (account == null) {
             return ImportResult.INVALID;
         }
+        ImportResult r = importP12ForScope(accountScope(account), data, password, displayName);
+        if (r == ImportResult.SUCCESS) {
+            SSLTrustManager.instance().invalidate(account);
+        }
+        return r;
+    }
 
+    /** Host-scoped variant for the SSO flow; no account to invalidate. */
+    public ImportResult importP12ForHost(String serverOrHost, byte[] data, String password, String displayName) {
+        if (TextUtils.isEmpty(serverOrHost)) {
+            return ImportResult.INVALID;
+        }
+        return importP12ForScope(hostScope(serverOrHost), data, password, displayName);
+    }
+
+    private ImportResult importP12ForScope(String scopeId, byte[] data, String password, String displayName) {
         ImportResult r = validateP12(data, password);
         if (r != ImportResult.SUCCESS) {
             return r;
         }
 
         try {
-            File out = p12File(account);
+            File out = p12File(scopeId);
             File dir = out.getParentFile();
             if (dir != null && !dir.exists() && !dir.mkdirs()) {
                 SafeLogs.e(DEBUG_TAG + ": could not create client cert dir");
@@ -220,16 +314,15 @@ public final class ClientCertManager {
             }
 
             prefs().edit()
-                    .putString(key(DataStoreKeys.KEY_CLIENT_CERT_TYPE, account), TYPE_P12)
-                    .putString(key(DataStoreKeys.KEY_CLIENT_CERT_P12_PATH, account), out.getAbsolutePath())
-                    .putString(key(DataStoreKeys.KEY_CLIENT_CERT_NAME, account),
+                    .putString(key(DataStoreKeys.KEY_CLIENT_CERT_TYPE, scopeId), TYPE_P12)
+                    .putString(key(DataStoreKeys.KEY_CLIENT_CERT_P12_PATH, scopeId), out.getAbsolutePath())
+                    .putString(key(DataStoreKeys.KEY_CLIENT_CERT_NAME, scopeId),
                             TextUtils.isEmpty(displayName) ? out.getName() : displayName)
-                    .putString(key(DataStoreKeys.KEY_CLIENT_CERT_P12_PWD, account), pwdEnc)
-                    .putString(key(DataStoreKeys.KEY_CLIENT_CERT_P12_IV, account), ivEnc)
-                    .remove(key(DataStoreKeys.KEY_CLIENT_CERT_ALIAS, account))
+                    .putString(key(DataStoreKeys.KEY_CLIENT_CERT_P12_PWD, scopeId), pwdEnc)
+                    .putString(key(DataStoreKeys.KEY_CLIENT_CERT_P12_IV, scopeId), ivEnc)
+                    .remove(key(DataStoreKeys.KEY_CLIENT_CERT_ALIAS, scopeId))
                     .apply();
 
-            SSLTrustManager.instance().invalidate(account);
             return ImportResult.SUCCESS;
         } catch (Exception e) {
             SafeLogs.e(DEBUG_TAG + ": p12 import failed, " + e.getMessage());
@@ -241,22 +334,31 @@ public final class ClientCertManager {
         if (account == null) {
             return;
         }
-
-        deleteP12File(account);
-        prefs().edit()
-                .remove(key(DataStoreKeys.KEY_CLIENT_CERT_TYPE, account))
-                .remove(key(DataStoreKeys.KEY_CLIENT_CERT_ALIAS, account))
-                .remove(key(DataStoreKeys.KEY_CLIENT_CERT_P12_PATH, account))
-                .remove(key(DataStoreKeys.KEY_CLIENT_CERT_P12_PWD, account))
-                .remove(key(DataStoreKeys.KEY_CLIENT_CERT_P12_IV, account))
-                .remove(key(DataStoreKeys.KEY_CLIENT_CERT_NAME, account))
-                .apply();
-
+        deleteBindingForScope(accountScope(account));
         SSLTrustManager.instance().invalidate(account);
     }
 
-    private void deleteP12File(Account account) {
-        File f = p12File(account);
+    public void deleteBindingForHost(String serverOrHost) {
+        if (TextUtils.isEmpty(serverOrHost)) {
+            return;
+        }
+        deleteBindingForScope(hostScope(serverOrHost));
+    }
+
+    private void deleteBindingForScope(String scopeId) {
+        deleteP12File(scopeId);
+        prefs().edit()
+                .remove(key(DataStoreKeys.KEY_CLIENT_CERT_TYPE, scopeId))
+                .remove(key(DataStoreKeys.KEY_CLIENT_CERT_ALIAS, scopeId))
+                .remove(key(DataStoreKeys.KEY_CLIENT_CERT_P12_PATH, scopeId))
+                .remove(key(DataStoreKeys.KEY_CLIENT_CERT_P12_PWD, scopeId))
+                .remove(key(DataStoreKeys.KEY_CLIENT_CERT_P12_IV, scopeId))
+                .remove(key(DataStoreKeys.KEY_CLIENT_CERT_NAME, scopeId))
+                .apply();
+    }
+
+    private void deleteP12File(String scopeId) {
+        File f = p12File(scopeId);
         if (f.exists() && !f.delete()) {
             SafeLogs.e(DEBUG_TAG + ": could not delete old p12 " + f.getAbsolutePath());
         }

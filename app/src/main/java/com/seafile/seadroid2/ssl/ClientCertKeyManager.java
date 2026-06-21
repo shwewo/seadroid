@@ -69,20 +69,35 @@ public class ClientCertKeyManager implements X509KeyManager {
         return accountProvider == null ? null : accountProvider.get();
     }
 
-    @Override
-    public String chooseClientAlias(String[] keyType, Principal[] issuers, Socket socket) {
-        Account account = account();
+    /**
+     * Resolve the binding for the current account, falling back to a <b>host-scoped</b> binding
+     * when the account has none of its own. The fallback is what makes a cert picked during SSO
+     * login (which is stored against the host, since no account exists yet) keep being presented
+     * by the resulting account afterwards, and by the pre-flight calls during login.
+     */
+    private ClientCertManager.ClientCertBinding resolveBinding(Account account) {
         if (account == null) {
             return null;
         }
-        ClientCertManager.ClientCertBinding b = ClientCertManager.instance().getBinding(account);
+        ClientCertManager mgr = ClientCertManager.instance();
+        ClientCertManager.ClientCertBinding b = mgr.getBinding(account);
+        if (b != null) {
+            return b;
+        }
+        String host = account.getServerHost();
+        return TextUtils.isEmpty(host) ? null : mgr.getBindingForHost(host);
+    }
+
+    @Override
+    public String chooseClientAlias(String[] keyType, Principal[] issuers, Socket socket) {
+        ClientCertManager.ClientCertBinding b = resolveBinding(account());
         if (b == null) {
             return null;
         }
         if (b.type == ClientCertManager.Type.KEYCHAIN) {
             return TextUtils.isEmpty(b.alias) ? null : b.alias;
         }
-        X509KeyManager km = p12Delegate(account, b);
+        X509KeyManager km = p12Delegate(b);
         return km == null ? null : km.chooseClientAlias(keyType, issuers, socket);
     }
 
@@ -94,35 +109,27 @@ public class ClientCertKeyManager implements X509KeyManager {
 
     @Override
     public X509Certificate[] getCertificateChain(String alias) {
-        Account account = account();
-        if (account == null) {
-            return null;
-        }
-        ClientCertManager.ClientCertBinding b = ClientCertManager.instance().getBinding(account);
+        ClientCertManager.ClientCertBinding b = resolveBinding(account());
         if (b == null) {
             return null;
         }
         if (b.type == ClientCertManager.Type.KEYCHAIN) {
             return keychainChain(b.alias);
         }
-        X509KeyManager km = p12Delegate(account, b);
+        X509KeyManager km = p12Delegate(b);
         return km == null ? null : km.getCertificateChain(alias);
     }
 
     @Override
     public PrivateKey getPrivateKey(String alias) {
-        Account account = account();
-        if (account == null) {
-            return null;
-        }
-        ClientCertManager.ClientCertBinding b = ClientCertManager.instance().getBinding(account);
+        ClientCertManager.ClientCertBinding b = resolveBinding(account());
         if (b == null) {
             return null;
         }
         if (b.type == ClientCertManager.Type.KEYCHAIN) {
             return keychainKey(b.alias);
         }
-        X509KeyManager km = p12Delegate(account, b);
+        X509KeyManager km = p12Delegate(b);
         return km == null ? null : km.getPrivateKey(alias);
     }
 
@@ -170,7 +177,7 @@ public class ClientCertKeyManager implements X509KeyManager {
 
     // ---- P12 ----
 
-    private X509KeyManager p12Delegate(Account account, ClientCertManager.ClientCertBinding b) {
+    private X509KeyManager p12Delegate(ClientCertManager.ClientCertBinding b) {
         if (b == null || TextUtils.isEmpty(b.p12Path)) {
             return null;
         }
@@ -184,7 +191,9 @@ public class ClientCertKeyManager implements X509KeyManager {
             return cached;
         }
         try {
-            String pwd = ClientCertManager.instance().getP12Password(account);
+            // resolve the password against the binding's own scope (account or host), not the
+            // account — a host-scoped fallback binding stores its password under the host key
+            String pwd = ClientCertManager.instance().getP12PasswordForScope(b.scopeId);
             char[] pc = pwd == null ? new char[0] : pwd.toCharArray();
 
             KeyStore ks = KeyStore.getInstance("PKCS12");

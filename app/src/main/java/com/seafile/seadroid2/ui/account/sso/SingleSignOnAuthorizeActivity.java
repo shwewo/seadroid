@@ -15,6 +15,7 @@ import android.util.Pair;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.animation.AnimationUtils;
+import android.webkit.ClientCertRequest;
 import android.webkit.CookieManager;
 import android.webkit.JsResult;
 import android.webkit.SslErrorHandler;
@@ -40,6 +41,7 @@ import com.seafile.seadroid2.framework.util.SLogs;
 import com.seafile.seadroid2.framework.util.Toasts;
 import com.seafile.seadroid2.framework.util.Utils;
 import com.seafile.seadroid2.ssl.CertsManager;
+import com.seafile.seadroid2.ssl.ClientCertKeyManager;
 import com.seafile.seadroid2.ui.account.AccountViewModel;
 import com.seafile.seadroid2.ui.account.SeafileAuthenticatorActivity;
 import com.seafile.seadroid2.ui.base.BaseActivityWithVM;
@@ -48,6 +50,7 @@ import com.seafile.seadroid2.ui.dialog.SslConfirmDialog;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URLEncoder;
+import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
 
 /**
@@ -254,6 +257,38 @@ public class SingleSignOnAuthorizeActivity extends BaseActivityWithVM<AccountVie
             Toasts.show(String.format((R.string.shib_load_page_error) + description));
 
             showPageLoading(false);
+        }
+
+        @Override
+        public void onReceivedClientCertRequest(WebView view, final ClientCertRequest request) {
+            // The server's mTLS perimeter asks for a client certificate during the SSO TLS
+            // handshake. Present the cert the user picked for this host on the welcome screen
+            // (stored host-scoped, since no account exists yet). KeyChain / keystore access
+            // blocks and must not run on the UI thread; request.proceed()/ignore() are safe to
+            // call from any thread. ignore() means "no cert" (ordinary one-way TLS), which is
+            // the right behaviour when none is configured.
+            final String url = serverUrl;
+            new Thread(() -> {
+                try {
+                    final Account temp = new Account(url, null, null, null, null, false);
+                    ClientCertKeyManager km = new ClientCertKeyManager(getApplicationContext(), () -> temp);
+                    String alias = km.chooseClientAlias(new String[]{"RSA", "EC"}, request.getPrincipals(), null);
+                    if (alias == null) {
+                        request.ignore();
+                        return;
+                    }
+                    PrivateKey key = km.getPrivateKey(alias);
+                    X509Certificate[] chain = km.getCertificateChain(alias);
+                    if (key != null && chain != null && chain.length > 0) {
+                        request.proceed(key, chain);
+                    } else {
+                        request.ignore();
+                    }
+                } catch (Exception e) {
+                    SLogs.e(TAG, "onReceivedClientCertRequest failed: " + e.getMessage());
+                    request.ignore();
+                }
+            }, "sso-client-cert").start();
         }
 
         @Override

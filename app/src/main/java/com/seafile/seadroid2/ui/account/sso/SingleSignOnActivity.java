@@ -1,17 +1,22 @@
 package com.seafile.seadroid2.ui.account.sso;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
+import android.security.KeyChain;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.NavUtils;
 import androidx.core.app.TaskStackBuilder;
@@ -19,18 +24,24 @@ import androidx.lifecycle.Observer;
 
 import com.blankj.utilcode.util.CollectionUtils;
 import com.blankj.utilcode.util.NetworkUtils;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.textfield.TextInputLayout;
 import com.seafile.seadroid2.R;
 import com.seafile.seadroid2.account.Account;
 import com.seafile.seadroid2.databinding.SingleSignOnWelcomeLayoutBinding;
 import com.seafile.seadroid2.framework.model.server.ServerInfoModel;
+import com.seafile.seadroid2.framework.util.ContentResolvers;
 import com.seafile.seadroid2.framework.util.SLogs;
 import com.seafile.seadroid2.framework.util.StringUtils;
 import com.seafile.seadroid2.framework.util.Toasts;
+import com.seafile.seadroid2.ssl.ClientCertManager;
 import com.seafile.seadroid2.ui.WidgetUtils;
 import com.seafile.seadroid2.ui.account.AccountsActivity;
 import com.seafile.seadroid2.ui.account.SeafileAuthenticatorActivity;
 import com.seafile.seadroid2.ui.base.BaseActivityWithVM;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -47,6 +58,24 @@ public class SingleSignOnActivity extends BaseActivityWithVM<SingleSignOnViewMod
     private SingleSignOnWelcomeLayoutBinding binding;
 
     private ActivityResultLauncher<Intent> authLauncher;
+    private ActivityResultLauncher<String[]> p12PickerLauncher;
+
+    /**
+     * The client certificate (mTLS) chosen on this screen, if any. Held until {@link #doNext()}
+     * persists it host-scoped, so the cert is in place before the first request to the server's
+     * mTLS-gated perimeter. {@code null} means "no change".
+     */
+    private PendingCert pendingCert;
+
+    /** A not-yet-persisted client cert choice (KeyChain alias, imported .p12, or removal). */
+    private static class PendingCert {
+        boolean cleared;                  // user tapped "Remove"
+        ClientCertManager.Type type;      // otherwise KEYCHAIN or P12
+        String alias;                     // KEYCHAIN
+        byte[] p12Data;                   // P12 (already validated against p12Password)
+        String p12Password;               // P12
+        String displayName;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,6 +84,11 @@ public class SingleSignOnActivity extends BaseActivityWithVM<SingleSignOnViewMod
         setContentView(binding.getRoot());
 
         registerAuthLauncher();
+        p12PickerLauncher = registerForActivityResult(new ActivityResultContracts.OpenDocument(), uri -> {
+            if (uri != null) {
+                onP12Picked(uri);
+            }
+        });
 
         initView();
         initViewModel();
@@ -102,6 +136,15 @@ public class SingleSignOnActivity extends BaseActivityWithVM<SingleSignOnViewMod
                 doNext();
             }
         });
+
+        binding.clientCertButton.setOnClickListener(v -> showCertSourceChooser());
+        binding.clientCertClear.setOnClickListener(v -> {
+            PendingCert p = new PendingCert();
+            p.cleared = true;
+            pendingCert = p;
+            updateClientCertStatus();
+        });
+        updateClientCertStatus();
 
         applyEdgeToEdge(binding.getRoot());
         Toolbar toolbar = getActionBarToolbar();
@@ -183,8 +226,149 @@ public class SingleSignOnActivity extends BaseActivityWithVM<SingleSignOnViewMod
     private void doNext() {
         String host = getServerHost();
         if (isServerHostValid(host)) {
+            // bind (or clear) the chosen client cert against this host before the first request,
+            // so the mTLS handshake to the perimeter (pre-flight + WebView) already presents it
+            persistPendingCert(host);
             getViewModel().loadServerInfo(host);
         }
+    }
+
+    /** Lets the user choose where the client certificate comes from: KeyChain or a .p12 file. */
+    private void showCertSourceChooser() {
+        CharSequence[] items = {
+                getString(R.string.client_cert_source_keychain),
+                getString(R.string.client_cert_source_p12)
+        };
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.client_cert_choose)
+                .setItems(items, (dialog, which) -> {
+                    if (which == 0) {
+                        chooseFromKeyChain();
+                    } else {
+                        p12PickerLauncher.launch(new String[]{
+                                "application/x-pkcs12", "application/pkcs12",
+                                "application/octet-stream", "*/*"});
+                    }
+                })
+                .show();
+    }
+
+    /**
+     * Opens the Android system credential picker (KeyChain). The private key stays in the OS
+     * keystore; we only remember the chosen alias.
+     */
+    private void chooseFromKeyChain() {
+        String host = null;
+        int port = -1;
+        String serverURL = getServerHost();
+        try {
+            if (!TextUtils.isEmpty(serverURL)) {
+                URI uri = new URI(serverURL.trim());
+                host = uri.getHost();
+                port = uri.getPort();
+            }
+        } catch (URISyntaxException ignored) {
+        }
+
+        KeyChain.choosePrivateKeyAlias(this, alias -> runOnUiThread(() -> {
+            // alias is null when the user cancels; keep the previous selection in that case
+            if (alias != null) {
+                PendingCert p = new PendingCert();
+                p.type = ClientCertManager.Type.KEYCHAIN;
+                p.alias = alias;
+                p.displayName = alias;
+                pendingCert = p;
+                updateClientCertStatus();
+            }
+        }), new String[]{"RSA", "EC"}, null, host, port, null);
+    }
+
+    private void onP12Picked(Uri uri) {
+        byte[] data = ContentResolvers.getFileContentFromUri(getContentResolver(), uri);
+        if (data == null || data.length == 0) {
+            Toasts.show(R.string.client_cert_import_failed);
+            return;
+        }
+        String name = ContentResolvers.getFileNameFromUri(getContentResolver(), uri);
+        if (TextUtils.isEmpty(name)) {
+            name = "client.p12";
+        }
+        promptP12Password(data, name);
+    }
+
+    /** Asks for the .p12 password and validates it before accepting the import. */
+    private void promptP12Password(byte[] data, String displayName) {
+        View view = getLayoutInflater().inflate(R.layout.dialog_p12_password, null);
+        TextInputLayout layout = view.findViewById(R.id.p12_password_layout);
+        EditText input = view.findViewById(R.id.p12_password_input);
+
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.client_cert_p12_password_title)
+                .setMessage(displayName)
+                .setView(view)
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.ok, null) // overridden below so a wrong password keeps the dialog open
+                .create();
+
+        dialog.setOnShowListener(d -> {
+            Button positive = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            positive.setOnClickListener(v -> {
+                String pwd = input.getText().toString();
+                ClientCertManager.ImportResult r = ClientCertManager.instance().validateP12(data, pwd);
+                if (r == ClientCertManager.ImportResult.SUCCESS) {
+                    PendingCert p = new PendingCert();
+                    p.type = ClientCertManager.Type.P12;
+                    p.p12Data = data;
+                    p.p12Password = pwd;
+                    p.displayName = displayName;
+                    pendingCert = p;
+                    updateClientCertStatus();
+                    dialog.dismiss();
+                } else if (r == ClientCertManager.ImportResult.WRONG_PASSWORD) {
+                    layout.setError(getString(R.string.client_cert_p12_wrong_password));
+                } else {
+                    layout.setError(getString(R.string.client_cert_import_failed));
+                }
+            });
+        });
+        dialog.show();
+    }
+
+    private void updateClientCertStatus() {
+        String label = null;
+
+        if (pendingCert != null) {
+            if (!pendingCert.cleared) {
+                label = pendingCert.displayName;
+            }
+        } else {
+            // no change this session: reflect what is already stored for this host
+            label = ClientCertManager.instance().getDisplayNameForHost(getServerHost());
+        }
+
+        if (TextUtils.isEmpty(label)) {
+            binding.clientCertStatus.setText(R.string.client_cert_none);
+            binding.clientCertClear.setVisibility(View.GONE);
+        } else {
+            binding.clientCertStatus.setText(getString(R.string.client_cert_selected, label));
+            binding.clientCertClear.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void persistPendingCert(String host) {
+        if (pendingCert == null) {
+            return;
+        }
+        ClientCertManager mgr = ClientCertManager.instance();
+        if (pendingCert.cleared) {
+            mgr.deleteBindingForHost(host);
+        } else if (pendingCert.type == ClientCertManager.Type.KEYCHAIN) {
+            mgr.saveKeyChainAliasForHost(host, pendingCert.alias);
+        } else if (pendingCert.type == ClientCertManager.Type.P12) {
+            mgr.importP12ForHost(host, pendingCert.p12Data, pendingCert.p12Password, pendingCert.displayName);
+        }
+        // persisted; subsequent re-entry should reflect the stored binding again
+        pendingCert = null;
     }
 
     private boolean isServerHostValid(String hostUrl) {
