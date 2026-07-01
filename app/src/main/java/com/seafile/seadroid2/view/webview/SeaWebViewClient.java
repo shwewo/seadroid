@@ -5,6 +5,7 @@ import static com.blankj.utilcode.util.ActivityUtils.startActivity;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
+import android.webkit.ClientCertRequest;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -17,6 +18,10 @@ import com.seafile.seadroid2.account.Account;
 import com.seafile.seadroid2.account.SupportAccountManager;
 import com.seafile.seadroid2.framework.util.SLogs;
 import com.seafile.seadroid2.framework.util.Token2SessionConverts;
+import com.seafile.seadroid2.ssl.ClientCertKeyManager;
+
+import java.security.PrivateKey;
+import java.security.cert.X509Certificate;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -63,6 +68,34 @@ public class SeaWebViewClient extends BridgeWebViewClient {
         if (onWebPageListener != null) {
             onWebPageListener.onReceivedHttpError(view, request, errorResponse);
         }
+    }
+
+    @Override
+    public void onReceivedClientCertRequest(WebView view, ClientCertRequest request) {
+        // KeyChain / keystore access blocks and must not run on the UI thread.
+        // request.proceed() / request.ignore() are safe to call from any thread.
+        new Thread(() -> {
+            try {
+                Account account = SupportAccountManager.getInstance().getCurrentAccount();
+                ClientCertKeyManager km = new ClientCertKeyManager(
+                        view.getContext().getApplicationContext(), () -> account);
+                String alias = km.chooseClientAlias(new String[]{"RSA", "EC"}, request.getPrincipals(), null);
+                if (alias == null) {
+                    request.ignore();
+                    return;
+                }
+                PrivateKey key = km.getPrivateKey(alias);
+                X509Certificate[] chain = km.getCertificateChain(alias);
+                if (key != null && chain != null && chain.length > 0) {
+                    request.proceed(key, chain);
+                } else {
+                    request.ignore();
+                }
+            } catch (Exception e) {
+                SLogs.e("SeaWebViewClient: onReceivedClientCertRequest failed: " + e.getMessage());
+                request.ignore();
+            }
+        }, "webview-client-cert").start();
     }
 
     @Override
