@@ -46,7 +46,9 @@ import com.seafile.seadroid2.BuildConfig;
 import com.seafile.seadroid2.R;
 import com.seafile.seadroid2.SeadroidApplication;
 import com.seafile.seadroid2.account.Account;
+import com.seafile.seadroid2.account.AccountInfo;
 import com.seafile.seadroid2.account.SupportAccountManager;
+import com.seafile.seadroid2.ui.account.AccountService;
 import com.seafile.seadroid2.config.RepoType;
 import com.seafile.seadroid2.framework.datastore.DataManager;
 import com.seafile.seadroid2.framework.db.AppDatabase;
@@ -72,6 +74,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+
+import retrofit2.Response;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -866,7 +870,43 @@ public class SeafileProvider extends DocumentsProvider {
         row.add(Root.COLUMN_ICON, R.mipmap.ic_launcher);
         row.add(Root.COLUMN_FLAGS, Root.FLAG_SUPPORTS_IS_CHILD | Root.FLAG_SUPPORTS_CREATE);
         row.add(Root.COLUMN_TITLE, account.getServerHost());
-        row.add(Root.COLUMN_SUMMARY, account.getEmail());
+        row.add(Root.COLUMN_SUMMARY, resolveAccountSummaryEmail(account));
+    }
+
+    private String resolveAccountSummaryEmail(Account account) {
+        String contactEmail = account.getContactEmail();
+        if (!TextUtils.isEmpty(contactEmail)) {
+            return contactEmail;
+        }
+
+        String email = account.getEmail();
+        if (!TextUtils.isEmpty(email) && email.endsWith("@auth.local")) {
+            String fetchedContactEmail = fetchAndCacheContactEmail(account);
+            if (!TextUtils.isEmpty(fetchedContactEmail)) {
+                return fetchedContactEmail;
+            }
+        }
+
+        return email;
+    }
+
+    private String fetchAndCacheContactEmail(Account account) {
+        try {
+            Response<AccountInfo> response = HttpManager.getHttpWithAccount(account)
+                    .execute(AccountService.class)
+                    .getAccountInfoCall()
+                    .execute();
+            if (response.isSuccessful() && response.body() != null) {
+                String contactEmail = response.body().getContactEmail();
+                if (!TextUtils.isEmpty(contactEmail)) {
+                    SupportAccountManager.getInstance().setContactEmail(account, contactEmail);
+                    return contactEmail;
+                }
+            }
+        } catch (IOException e) {
+            SLogs.e(e);
+        }
+        return null;
     }
 
     /**

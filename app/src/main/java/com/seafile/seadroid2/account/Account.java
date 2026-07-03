@@ -21,6 +21,7 @@ public class Account extends BaseModel implements Parcelable, Comparable<Account
     public String name;
 
     public String email;
+    public String contact_email;
 
     //single sign in
     public boolean is_shib;
@@ -134,6 +135,20 @@ public class Account extends BaseModel implements Parcelable, Comparable<Account
 
     public String getEmail() {
         return email;
+    }
+
+    public String getContactEmail() {
+        if (!TextUtils.isEmpty(contact_email)) {
+            return contact_email;
+        }
+        if (!TextUtils.isEmpty(email) && email.endsWith("@auth.local")) {
+            return "";
+        }
+        return email;
+    }
+
+    public void setContactEmail(String contact_email) {
+        this.contact_email = contact_email;
     }
 
     public String getAvatarUrl() {

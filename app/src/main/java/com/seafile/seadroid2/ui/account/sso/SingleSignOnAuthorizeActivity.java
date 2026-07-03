@@ -204,6 +204,7 @@ public class SingleSignOnAuthorizeActivity extends BaseActivityWithVM<AccountVie
         retData.putExtra(android.accounts.AccountManager.KEY_AUTHTOKEN, account.getToken());
         retData.putExtra(android.accounts.AccountManager.KEY_ACCOUNT_TYPE, getIntent().getStringExtra(SeafileAuthenticatorActivity.ARG_ACCOUNT_TYPE));
         retData.putExtra(SeafileAuthenticatorActivity.ARG_EMAIL, account.getEmail());
+        retData.putExtra(SeafileAuthenticatorActivity.ARG_CONTACT_EMAIL, account.getContactEmail());
         retData.putExtra(SeafileAuthenticatorActivity.ARG_NAME, account.getName());
         retData.putExtra(SeafileAuthenticatorActivity.ARG_SHIB, account.is_shib);
         retData.putExtra(SeafileAuthenticatorActivity.ARG_SERVER_URI, account.getServer());

@@ -135,6 +135,7 @@ public class SupportAccountManager {
     public Account getSeafileAccount(android.accounts.Account androidAccount) {
         String server = accountManager.getUserData(androidAccount, Authenticator.KEY_SERVER_URI);
         String email = accountManager.getUserData(androidAccount, Authenticator.KEY_EMAIL);
+        String contactEmail = accountManager.getUserData(androidAccount, Authenticator.KEY_CONTACT_EMAIL);
         String name = accountManager.getUserData(androidAccount, Authenticator.KEY_NAME);
         String avatarUrl = accountManager.getUserData(androidAccount, Authenticator.KEY_AVATAR_URL);
         boolean isShib = accountManager.getUserData(androidAccount, Authenticator.KEY_SHIB) != null;
@@ -148,6 +149,7 @@ public class SupportAccountManager {
         account.name = name;
         account.server = server;
         account.email = email;
+        account.contact_email = contactEmail;
         account.avatar_url = avatarUrl;
         account.token = token;
         account.is_shib = isShib;
@@ -198,6 +200,14 @@ public class SupportAccountManager {
 
     public void setUserData(android.accounts.Account account, String key, String value) {
         accountManager.setUserData(account, key, value);
+    }
+
+    public void setContactEmail(Account account, String contactEmail) {
+        if (account == null) {
+            return;
+        }
+        account.setContactEmail(contactEmail);
+        setUserData(account.getAndroidAccount(), Authenticator.KEY_CONTACT_EMAIL, contactEmail);
     }
 
     public String getUserData(final android.accounts.Account account, final String key) {

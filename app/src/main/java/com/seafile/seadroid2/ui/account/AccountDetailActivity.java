@@ -295,6 +295,7 @@ public class AccountDetailActivity extends BaseActivityWithVM<AccountViewModel> 
         retData.putExtra(SeafileAuthenticatorActivity.ARG_SPACE_TOTAL, loginAccount.getTotalSpace());
         retData.putExtra(SeafileAuthenticatorActivity.ARG_SPACE_USAGE, loginAccount.getUsageSpace());
         retData.putExtra(SeafileAuthenticatorActivity.ARG_EMAIL, loginAccount.getEmail());
+        retData.putExtra(SeafileAuthenticatorActivity.ARG_CONTACT_EMAIL, loginAccount.getContactEmail());
         retData.putExtra(SeafileAuthenticatorActivity.ARG_NAME, loginAccount.getName());
         retData.putExtra(SeafileAuthenticatorActivity.ARG_AUTH_SESSION_KEY, loginAccount.getSessionKey());
         retData.putExtra(SeafileAuthenticatorActivity.ARG_SERVER_URI, loginAccount.getServer());

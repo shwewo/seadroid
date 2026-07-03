@@ -69,6 +69,7 @@ public class AccountViewModel extends BaseViewModel {
 
                 loginAccount.login_time = System.currentTimeMillis();
                 loginAccount.setEmail(accountInfo.getEmail());
+                loginAccount.setContactEmail(accountInfo.getContactEmail());
                 loginAccount.setName(accountInfo.getName());
                 loginAccount.setAvatarUrl(accountInfo.getAvatarUrl());
 
@@ -132,6 +133,7 @@ public class AccountViewModel extends BaseViewModel {
                 // Update the account info
                 tempAccount.setName(accountInfo.getName());
 //                tempAccount.setEmail(accountInfo.getEmail());
+                tempAccount.setContactEmail(accountInfo.getContactEmail());
                 tempAccount.setAvatarUrl(accountInfo.getAvatarUrl());
                 tempAccount.setTotalSpace(accountInfo.getTotal());
                 tempAccount.setUsageSpace(accountInfo.getUsage());

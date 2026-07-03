@@ -461,6 +461,7 @@ public class SingleSignOnActivity extends BaseActivityWithVM<SingleSignOnViewMod
 
 
         retData.putExtra(SeafileAuthenticatorActivity.ARG_EMAIL, account.getEmail());
+        retData.putExtra(SeafileAuthenticatorActivity.ARG_CONTACT_EMAIL, account.getContactEmail());
         retData.putExtra(SeafileAuthenticatorActivity.ARG_NAME, account.getName());
         retData.putExtra(SeafileAuthenticatorActivity.ARG_SHIB, account.is_shib);
         retData.putExtra(SeafileAuthenticatorActivity.ARG_SERVER_URI, account.getServer());

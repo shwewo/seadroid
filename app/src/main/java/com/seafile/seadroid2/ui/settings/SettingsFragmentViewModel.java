@@ -79,6 +79,11 @@ public class SettingsFragmentViewModel extends BaseViewModel {
                 Settings.USER_INFO.putValue(accountInfo.getName());
                 Settings.USER_SERVER_INFO.putValue(accountInfo.getServer());
                 Settings.SPACE_INFO.putValue(accountInfo.getSpaceUsed());
+
+                Account account = SupportAccountManager.getInstance().getCurrentAccount();
+                if (account != null && !TextUtils.isEmpty(accountInfo.getContactEmail())) {
+                    SupportAccountManager.getInstance().setContactEmail(account, accountInfo.getContactEmail());
+                }
             }
         });
     }
