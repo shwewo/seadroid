@@ -149,6 +149,8 @@ public class MediaBackupUploader extends ParentEventUploader {
 
         }
 
+        clearWhenComplete();
+
         // clear all notifications
         getTransferNotificationDispatcher().clearDelay();
 

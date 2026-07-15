@@ -40,6 +40,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
+@Deprecated
 public class VersatileSelectorActivity extends BaseActivity {
     private ActivityVersatileSelectorBinding binding;
     private final List<Fragment> fragments = new ArrayList<>();
@@ -123,25 +124,25 @@ public class VersatileSelectorActivity extends BaseActivity {
             return;
         }
 
-        VersatileRepoSelectorFragment vrsf = (VersatileRepoSelectorFragment) fragments.get(index);
-        RecentlyUsedModel r = vrsf.genRecentUsedModel();
-        if (r == null) {
-            Toasts.show(R.string.choose_a_library);
-            return;
-        }
-
-        String rid = r.repoId;
-        String parentPath = r.path;
-        BottomSheetNewDirFileDialogFragment dialogFragment = BottomSheetNewDirFileDialogFragment.newInstance(mAccount, rid, parentPath, true);
-        dialogFragment.setRefreshListener(new OnRefreshDataListener() {
-            @Override
-            public void onActionStatus(boolean isDone) {
-                if (isDone) {
-                    vrsf.initLoad();
-                }
-            }
-        });
-        dialogFragment.show(getSupportFragmentManager(), BottomSheetNewDirFileDialogFragment.class.getSimpleName());
+//        VersatileRepoSelectorFragment vrsf = (VersatileRepoSelectorFragment) fragments.get(index);
+//        RecentlyUsedModel r = vrsf.genRecentUsedModel();
+//        if (r == null) {
+//            Toasts.show(R.string.choose_a_library);
+//            return;
+//        }
+//
+//        String rid = r.repoId;
+//        String parentPath = r.path;
+//        BottomSheetNewDirFileDialogFragment dialogFragment = BottomSheetNewDirFileDialogFragment.newInstance(mAccount, rid, parentPath, true);
+//        dialogFragment.setRefreshListener(new OnRefreshDataListener() {
+//            @Override
+//            public void onActionStatus(boolean isDone) {
+//                if (isDone) {
+//                    vrsf.initLoad();
+//                }
+//            }
+//        });
+//        dialogFragment.show(getSupportFragmentManager(), BottomSheetNewDirFileDialogFragment.class.getSimpleName());
     }
 
     private void initView() {
@@ -218,7 +219,7 @@ public class VersatileSelectorActivity extends BaseActivity {
         fragments.clear();
         fragments.add(VersatileRepoSelectorFragment.newInstance(mAccount.getSignature(), startRepoId, startPath));
         fragments.add(VersatileRepoSelectorFragment.newInstance(mAccount.getSignature()));
-        fragments.add(RecentlyUsedFragment.newInstance());
+        fragments.add(RecentlyUsedFragment.newInstance(mAccount));
 
         ViewPager2Adapter viewPager2Adapter = new ViewPager2Adapter(this);
         viewPager2Adapter.addFragments(fragments);
@@ -259,28 +260,28 @@ public class VersatileSelectorActivity extends BaseActivity {
             return;
         }
 
-        VersatileRepoSelectorFragment vrsf = (VersatileRepoSelectorFragment) fragments.get(index);
-        RecentlyUsedModel r = vrsf.genRecentUsedModel();
-        if (r == null) {
-            return;
-        }
-
-        boolean isExists = isExistsInUsedList(r);
-        if (isExists) {
-            return;
-        }
-
-        List<RecentlyUsedModel> list = getRecentUsedList();
-        list.add(r);
-
-        String s = GsonUtils.toJson(list);
-
-        SharedPreferences sp = Settings.getCurrentAccountSharedPreferences();
-        if (sp == null) {
-            return;
-        }
-
-        sp.edit().putString(SettingsManager.SELECTOR_RECENTLY_USED, s).apply();
+//        VersatileRepoSelectorFragment vrsf = (VersatileRepoSelectorFragment) fragments.get(index);
+//        RecentlyUsedModel r = vrsf.genRecentUsedModel();
+//        if (r == null) {
+//            return;
+//        }
+//
+//        boolean isExists = isExistsInUsedList(r);
+//        if (isExists) {
+//            return;
+//        }
+//
+//        List<RecentlyUsedModel> list = getRecentUsedList();
+//        list.add(r);
+//
+//        String s = GsonUtils.toJson(list);
+//
+//        SharedPreferences sp = Settings.getCurrentAccountSharedPreferences();
+//        if (sp == null) {
+//            return;
+//        }
+//
+//        sp.edit().putString(SettingsManager.SELECTOR_RECENTLY_USED, s).apply();
     }
 
     private void onCancelClicked() {

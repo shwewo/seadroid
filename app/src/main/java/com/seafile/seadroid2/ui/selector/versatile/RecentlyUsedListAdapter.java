@@ -67,7 +67,11 @@ public class RecentlyUsedListAdapter extends BaseAdapter<RecentlyUsedModel, Rece
             holder.binding.itemSubtitle.setText(model.repoName);
         }
 
-        holder.binding.itemSelectView.setVisibility(model.isSelected ? View.VISIBLE : View.INVISIBLE);
+        if (model.isSelected) {
+            holder.binding.itemSelectView.setImageResource(R.drawable.ic_checkbox_checked);
+        } else {
+            holder.binding.itemSelectView.setImageResource(R.drawable.ic_checkbox_unchecked);
+        }
     }
 
 

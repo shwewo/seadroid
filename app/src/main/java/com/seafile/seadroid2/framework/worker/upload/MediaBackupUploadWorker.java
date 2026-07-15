@@ -204,6 +204,12 @@ public class MediaBackupUploadWorker extends BaseUploadWorker {
         }
 
         setIsRunning(false);
+
+        // Cancel notification to make sure foreground service stops
+        if (notificationManager != null) {
+            notificationManager.cancel();
+        }
+
         sendCompleteEvent(FeatureDataSource.ALBUM_BACKUP, errorMsg, totalPendingCount);
         return Result.success();
     }

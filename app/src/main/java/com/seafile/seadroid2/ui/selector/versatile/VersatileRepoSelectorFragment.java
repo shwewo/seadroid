@@ -11,7 +11,6 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.Observer;
-import androidx.lifecycle.ViewModelProvider;
 
 import com.blankj.utilcode.util.CollectionUtils;
 import com.chad.library.adapter4.QuickAdapterHelper;
@@ -27,7 +26,6 @@ import com.seafile.seadroid2.framework.db.AppDatabase;
 import com.seafile.seadroid2.framework.db.entities.DirentModel;
 import com.seafile.seadroid2.framework.db.entities.RepoModel;
 import com.seafile.seadroid2.framework.model.BaseModel;
-import com.seafile.seadroid2.framework.model.versatile.RecentlyUsedModel;
 import com.seafile.seadroid2.ui.base.fragment.BaseFragmentWithVM;
 import com.seafile.seadroid2.ui.dialog_fragment.BottomSheetPasswordDialogFragment;
 import com.seafile.seadroid2.ui.dialog_fragment.listener.OnResultListener;
@@ -41,8 +39,6 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
-
-import io.reactivex.functions.Consumer;
 
 public class VersatileRepoSelectorFragment extends BaseFragmentWithVM<ObjSelectorViewModel> {
     private FragmentVersatileSelectorBinding binding;
@@ -316,29 +312,27 @@ public class VersatileRepoSelectorFragment extends BaseFragmentWithVM<ObjSelecto
     private void setReturnStyle(boolean isEnable) {
         binding.returnTo.setEnabled(isEnable);
         if (isEnable) {
-            binding.returnToIcon.setAlpha(1f);
-            binding.returnToTitle.setAlpha(1f);
+            binding.returnTo.setVisibility(View.VISIBLE);
+            binding.returnTo.animate()
+                    .alpha(1f)
+                    .setDuration(400)
+                    .start();
         } else {
-            binding.returnToIcon.setAlpha(0.5f);
-            binding.returnToTitle.setAlpha(0.5f);
+            binding.returnTo.animate()
+                    .alpha(0f)
+                    .setDuration(400)
+                    .withEndAction(new Runnable() {
+                        @Override
+                        public void run() {
+                            binding.returnTo.setVisibility(View.GONE);
+                        }
+                    })
+                    .start();
         }
     }
 
     public Pair<Account, NavContext> getBackupInfo() {
         return new Pair<>(mAccount, localNavContext);
-    }
-
-    public RecentlyUsedModel genRecentUsedModel() {
-        if (localNavContext.getRepoModel() == null) {
-            return null;
-        }
-
-        RecentlyUsedModel r = new RecentlyUsedModel();
-        r.repoId = localNavContext.getRepoModel().repo_id;
-        r.repoName = localNavContext.getRepoModel().repo_name;
-        r.path = localNavContext.getNavPath();
-        r.account = mAccount.getSignature();
-        return r;
     }
 }
 

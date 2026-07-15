@@ -35,6 +35,7 @@ import com.seafile.seadroid2.R;
 import com.seafile.seadroid2.SeadroidApplication;
 import com.seafile.seadroid2.SeafException;
 import com.seafile.seadroid2.account.Account;
+import com.seafile.seadroid2.config.Constants;
 import com.seafile.seadroid2.databinding.SingleSignOnAuthorizeLayoutBinding;
 import com.seafile.seadroid2.framework.util.DeviceIdManager;
 import com.seafile.seadroid2.framework.util.SLogs;
@@ -164,16 +165,14 @@ public class SingleSignOnAuthorizeActivity extends BaseActivityWithVM<AccountVie
     }
 
     private void initViewModel() {
-        getViewModel().getAccountSeafExceptionLiveData().observe(this, new Observer<Pair<Account, SeafException>>() {
+        getViewModel().getRequestAccountResultData().observe(this, new Observer<Pair<Account, SeafException>>() {
             @Override
             public void onChanged(Pair<Account, SeafException> pair) {
-                onLoginException(pair.first, pair.second);
-            }
-        });
-        getViewModel().getAccountLiveData().observe(this, new Observer<Account>() {
-            @Override
-            public void onChanged(Account account) {
-                onLoggedIn(account);
+                if (pair.second == SeafException.SUCCESS) {
+                    onLoggedIn(pair.first);
+                } else {
+                    onLoginException(pair.first, pair.second);
+                }
             }
         });
     }
@@ -185,7 +184,7 @@ public class SingleSignOnAuthorizeActivity extends BaseActivityWithVM<AccountVie
                         @Override
                         public void onAccepted(boolean rememberChoice) {
                             CertsManager.instance().saveCertForAccount(account, rememberChoice);
-                            getViewModel().loadAccountInfo(account, account.getToken());
+                            getViewModel().syncAccountAndServerInfo(account);
                         }
 
                         @Override
@@ -347,7 +346,7 @@ public class SingleSignOnAuthorizeActivity extends BaseActivityWithVM<AccountVie
                     return;
                 }
 
-                getViewModel().loadAccountInfo(account, account.getToken());
+                getViewModel().syncAccountAndServerInfo(account);
             } catch (MalformedURLException e) {
                 SLogs.e(e);
             }

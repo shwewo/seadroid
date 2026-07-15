@@ -94,6 +94,8 @@ public class ShareToSeafileUploader extends ParentEventUploader {
             }
         }
 
+        clearWhenComplete();
+
         // clear all notifications
         getTransferNotificationDispatcher().clearDelay();
 

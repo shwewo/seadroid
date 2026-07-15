@@ -221,9 +221,6 @@ public class MainActivity extends BaseActivity {
     protected void onPostCreate(Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
 
-//        OneTimeWorkRequest oneTimeWorkRequest = new OneTimeWorkRequest.Builder(LivePhotoScanner.class).build();
-//        BackgroundJobManagerImpl.getInstance().getWorkManager().enqueue(oneTimeWorkRequest);
-
         requestNotificationPermission();
     }
 

@@ -152,6 +152,8 @@ public class FolderBackupUploader extends ParentEventUploader {
             }
         }
 
+        clearWhenComplete();
+
         // clear all notifications
         getTransferNotificationDispatcher().clearDelay();
 

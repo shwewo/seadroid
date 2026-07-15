@@ -28,6 +28,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputLayout;
 import com.seafile.seadroid2.R;
 import com.seafile.seadroid2.account.Account;
+import com.seafile.seadroid2.config.Constants;
 import com.seafile.seadroid2.databinding.SingleSignOnWelcomeLayoutBinding;
 import com.seafile.seadroid2.framework.model.server.ServerInfoModel;
 import com.seafile.seadroid2.framework.util.ContentResolvers;

@@ -680,6 +680,7 @@ public class RepoQuickAdapter extends BaseMultiAdapter<BaseModel> {
         holder.binding.itemMultiSelect.setVisibility(View.GONE);
 //        holder.binding.itemDownloadStatusProgressbar.setVisibility(View.GONE);
         holder.binding.itemDownloadStatus.setVisibility(View.GONE);
+        holder.binding.itemIconStatus.setVisibility(View.GONE);
 
         holder.binding.itemTitle.setCompoundDrawables(null, null, null, null);
 

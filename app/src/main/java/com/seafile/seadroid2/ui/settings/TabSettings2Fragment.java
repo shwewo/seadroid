@@ -299,6 +299,7 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
         Preference userPref = findPreference(getString(R.string.pref_key_user_info));
         if (userPref != null) {
             userPref.setOnPreferenceClickListener(preference -> {
+                SLogs.d(TAG, "initAccountPref, userPref clicked");
                 Intent newIntent = new Intent(requireActivity(), AccountsActivity.class);
                 newIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 startActivity(newIntent);
@@ -310,12 +311,14 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
 
     private void initSignOutPref() {
         findPreference(getString(R.string.pref_key_sign_out)).setOnPreferenceClickListener(preference -> {
+            SLogs.d(TAG, "initSignOutPref, signOutPref clicked");
             onPreferenceSignOutClicked();
             return true;
         });
 
         //clear pwd
         findPreference(getString(R.string.pref_key_security_clear_password)).setOnPreferenceClickListener(preference -> {
+            SLogs.d(TAG, "initSignOutPref, clearPasswordPref clicked");
             // clear password
             clearPassword();
             return true;
@@ -339,6 +342,7 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
             mBiometricLockSwitch.setChecked(storedValue);
             mBiometricLockSwitch.setVisible(canLock);
             mBiometricLockSwitch.setOnPreferenceChangeListener((preference, newValue) -> {
+                SLogs.d(TAG, "initSecurityPref, biometricLockSwitch clicked, newValue=" + newValue);
                 boolean enabled = (Boolean) newValue;
                 if (mLockTimeoutPref != null) {
                     mLockTimeoutPref.setVisible(enabled);
@@ -392,6 +396,7 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
             mAlbumBackupAdvancedSelectedBucket.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
                 @Override
                 public boolean onPreferenceClick(@NonNull Preference preference) {
+                    SLogs.d(TAG, "initAlbumBackupPref, selectedBucketPref clicked");
                     Intent intent = new Intent(requireActivity(), CameraUploadConfigActivity.class);
                     intent.putExtra(CameraUploadConfigActivity.CAMERA_UPLOAD_LOCAL_DIRECTORIES, true);
                     albumBackupSelectCustomAlbumLauncher.launch(intent);
@@ -404,6 +409,7 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
             mAlbumBackupRepo.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
                 @Override
                 public boolean onPreferenceClick(@NonNull Preference preference) {
+                    SLogs.d(TAG, "initAlbumBackupPref, repoSelect clicked");
                     // choose remote library
                     Intent intent = new Intent(requireActivity(), CameraUploadConfigActivity.class);
                     intent.putExtra(CameraUploadConfigActivity.CAMERA_UPLOAD_REMOTE_LIBRARY, true);
@@ -427,7 +433,8 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
         //repo
         if (mFolderBackupSelectRepo != null) {
             mFolderBackupSelectRepo.setOnPreferenceClickListener(preference -> {
-
+                SLogs.d(TAG, "initFolderBackupPref, repoSelect clicked");
+                
                 Bundle bundle = new Bundle();
                 bundle.putBoolean("isFilterUnavailable", false);
                 bundle.putString(TabSettings2Fragment.FB_SELECT_TYPE, "repo");
@@ -441,7 +448,8 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
         //
         if (mFolderBackupSelectFolder != null) {
             mFolderBackupSelectFolder.setOnPreferenceClickListener(preference -> {
-
+                SLogs.d(TAG, "initFolderBackupPref, folderSelect clicked");
+                
                 List<String> backupPathList = FolderBackupSharePreferenceHelper.readBackupPathsAsList();
 
                 Intent intent;
@@ -463,6 +471,7 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
         mTransferUploadState = findPreference(getString(R.string.pref_key_transfer_upload_state));
         if (mTransferDownloadState != null) {
             mTransferDownloadState.setOnPreferenceClickListener(preference -> {
+                SLogs.d(TAG, "initTransferPref, downloadState clicked");
                 Intent intent = new Intent(requireActivity(), TransferActivity.class);
                 intent.putExtra(NOTIFICATION_MESSAGE_KEY, NOTIFICATION_OPEN_DOWNLOAD_TAB);
                 intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -472,6 +481,7 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
         }
         if (mTransferUploadState != null) {
             mTransferUploadState.setOnPreferenceClickListener(preference -> {
+                SLogs.d(TAG, "initTransferPref, uploadState clicked");
                 Intent intent = new Intent(requireActivity(), TransferActivity.class);
                 intent.putExtra(NOTIFICATION_MESSAGE_KEY, NOTIFICATION_OPEN_UPLOAD_TAB);
                 intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -490,6 +500,7 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
             cachePref.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
                 @Override
                 public boolean onPreferenceClick(@NonNull Preference preference) {
+                    SLogs.d(TAG, "initCachePref, cachePref clicked");
                     clearCache();
                     return true;
                 }
@@ -504,6 +515,7 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
                 cacheLocationPref.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
                     @Override
                     public boolean onPreferenceClick(@NonNull Preference preference) {
+                        SLogs.d(TAG, "initCachePref, cacheLocationPref clicked");
                         if (dialogFragment != null && dialogFragment.isVisible()) {
                             return true;
                         }
@@ -530,6 +542,7 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
                 policyPref.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
                     @Override
                     public boolean onPreferenceClick(@NonNull Preference preference) {
+                        SLogs.d(TAG, "initAboutPref, policyPref clicked");
                         SeaWebViewActivity.openUrl(requireContext(), Constants.URL_PRIVACY, false);
                         return true;
                     }
@@ -557,6 +570,7 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
         Preference authorPref = findPreference(getString(R.string.pref_key_about_author));
         if (authorPref != null) {
             authorPref.setOnPreferenceClickListener(preference -> {
+                SLogs.d(TAG, "initAboutPref, authorPref clicked");
                 MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireActivity());
                 Spanned span = HtmlCompat.fromHtml(getString(R.string.settings_about_author_info, appVersion), FROM_HTML_MODE_LEGACY);
                 builder.setMessage(span);
@@ -570,6 +584,7 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
             exportLogFiles.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
                 @Override
                 public boolean onPreferenceClick(@NonNull Preference preference) {
+                    SLogs.d(TAG, "initAboutPref, exportLogFiles clicked");
                     exportLogFile();
                     return false;
                 }
@@ -609,6 +624,8 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
         openIntent.setDataAndType(uri, "text/plain");
         openIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
         boolean isAvailable = WidgetUtils.isIntentAvailable(requireContext(), openIntent);
+        SLogs.d(TAG, "initAboutPref, exportLogFiles clicked, isAvailable = " + isAvailable);
+
         if (isAvailable) {
             startActivity(openIntent);
         } else {
@@ -664,21 +681,26 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
         Settings.USER_INFO.observe(getViewLifecycleOwner(), new Observer<String>() {
             @Override
             public void onChanged(String s) {
+                SLogs.d(TAG, "initPrefLiveData, userInfo onChanged, changed value = " + s);
                 findPreference(getString(R.string.pref_key_user_info)).setTitle(s);
-
             }
         });
 
         Settings.USER_SERVER_INFO.observe(getViewLifecycleOwner(), new Observer<String>() {
             @Override
             public void onChanged(String s) {
+                SLogs.d(TAG, "initPrefLiveData, userServerInfo onChanged, changed value = " + s);
                 findPreference(getString(R.string.pref_key_user_server)).setSummary(s);
             }
         });
-
+        //////////////////
+        /// space
+        //////////////////
         Settings.SPACE_INFO.observe(getViewLifecycleOwner(), new Observer<String>() {
             @Override
             public void onChanged(String s) {
+                SLogs.d(TAG, "initPrefLiveData, spaceInfo onChanged, changed value = " + s);
+                SLogs.d(TAG, "initPrefLiveData, spaceInfo onChanged, changed value = " + s);
                 findPreference(getString(R.string.pref_key_user_space)).setSummary(s);
             }
         });
@@ -689,6 +711,7 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
         Settings.BACKUP_SETTINGS_BACKGROUND_SWITCH.observe(getViewLifecycleOwner(), new Observer<Boolean>() {
             @Override
             public void onChanged(Boolean aBoolean) {
+                SLogs.d(TAG, "initPrefLiveData, backupSettingsBackgroundSwitch onChanged, changed value = " + aBoolean);
                 mBackgroundBackupSwitch.setChecked(aBoolean);
                 if (PermissionUtil.hasNotGrantNotificationPermission(requireContext())) {
                     PermissionUtil.requestNotificationPermission(requireActivity());
@@ -705,7 +728,7 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
         Settings.ALBUM_BACKUP_SWITCH.observe(getViewLifecycleOwner(), new Observer<Boolean>() {
             @Override
             public void onChanged(Boolean aBoolean) {
-                SLogs.d(TAG, "album switch：" + aBoolean);
+                SLogs.d(TAG, "initPrefLiveData, albumBackupSwitch onChanged, changed value = " + aBoolean);
 
                 if (aBoolean) {
                     requestCameraStoragePermission();
@@ -716,11 +739,13 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
                 }
             }
         });
-
+        //////////////////
+        /// album backup advance
+        //////////////////
         Settings.ALBUM_BACKUP_ADVANCE_DATA_PLAN_SWITCH.observe(getViewLifecycleOwner(), new Observer<Boolean>() {
             @Override
             public void onChanged(Boolean aBoolean) {
-                SLogs.d(TAG, "album data plan switch：" + aBoolean);
+                SLogs.d(TAG, "initPrefLiveData, albumBackupAdvanceDataPlanSwitch onChanged, changed value = " + aBoolean);
                 launchAlbumBackupWhenReady(false);
             }
         });
@@ -728,7 +753,7 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
         Settings.ALBUM_BACKUP_ADVANCE_ALLOW_VIDEO_SWITCH.observe(getViewLifecycleOwner(), new Observer<Boolean>() {
             @Override
             public void onChanged(Boolean aBoolean) {
-                SLogs.d(TAG, "album allow video switch：" + aBoolean);
+                SLogs.d(TAG, "initPrefLiveData, albumBackupAdvanceAllowVideoSwitch onChanged, changed value = " + aBoolean);
                 launchAlbumBackupWhenReady(true);
             }
         });
@@ -763,8 +788,7 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
         Settings.FOLDER_BACKUP_SWITCH.observe(getViewLifecycleOwner(), new Observer<Boolean>() {
             @Override
             public void onChanged(Boolean aBoolean) {
-                SLogs.d(TAG, "folder switch：" + aBoolean);
-
+                SLogs.d(TAG, "initPrefLiveData, folderBackupSwitch onChanged, changed value = " + aBoolean);
                 if (Boolean.TRUE.equals(aBoolean)) {
                     requestFolderStoragePermission();
                 } else {
@@ -783,7 +807,7 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
         Settings.FOLDER_BACKUP_SYNC_HIDDEN_FILES.observe(getViewLifecycleOwner(), new Observer<Boolean>() {
             @Override
             public void onChanged(Boolean aBoolean) {
-                SLogs.d(TAG, "Sync hidden files " + !aBoolean);
+                SLogs.d(TAG, "initPrefLiveData, folderBackupSyncHiddenFiles onChanged, changed value = " + aBoolean);
                 // button label is "show hidden files", if enable we don't skip
                 FolderBackupSharePreferenceHelper.writeSkipHiddenFiles(!aBoolean);
 
@@ -794,8 +818,7 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
         Settings.FOLDER_BACKUP_NETWORK_MODE.observe(getViewLifecycleOwner(), new Observer<NetworkMode>() {
             @Override
             public void onChanged(NetworkMode netWorkMode) {
-                SLogs.d(TAG, "folder network：" + netWorkMode.name());
-
+                SLogs.d(TAG, "initPrefLiveData, folderBackupNetworkMode onChanged, changed value = " + netWorkMode.name());
                 launchFolderBackupWhenReady(false);
 //                TransferService.restartFolderBackupService(requireContext());
             }
@@ -815,7 +838,7 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
         Settings.TRANSFER_DOWNLOAD_STATE.observe(getViewLifecycleOwner(), new Observer<String>() {
             @Override
             public void onChanged(String s) {
-                SLogs.d(TAG, "transfer state：" + s);
+                SLogs.d(TAG, "initPrefLiveData, transferDownloadState onChanged, changed value = " + s);
                 if (mTransferDownloadState != null) {
                     mTransferDownloadState.setSummary(s);
                 }
@@ -824,7 +847,7 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
         Settings.TRANSFER_UPLOAD_STATE.observe(getViewLifecycleOwner(), new Observer<String>() {
             @Override
             public void onChanged(String s) {
-                SLogs.d(TAG, "transfer state：" + s);
+                SLogs.d(TAG, "initPrefLiveData, transferUploadState onChanged, changed value = " + s);
                 if (mTransferUploadState != null) {
                     mTransferUploadState.setSummary(s);
                 }
@@ -837,7 +860,7 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
         Settings.CACHE_SIZE.observe(getViewLifecycleOwner(), new Observer<String>() {
             @Override
             public void onChanged(String s) {
-                SLogs.d(TAG, "cache size：" + s);
+                SLogs.d(TAG, "initPrefLiveData, cacheSize onChanged, changed value = " + s);
                 findPreference(getString(R.string.pref_key_cache_info)).setSummary(s);
             }
         });
@@ -848,6 +871,7 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
         Settings.BIOMETRIC_LOCK_SWITCH.observe(getViewLifecycleOwner(), new Observer<Boolean>() {
             @Override
             public void onChanged(Boolean enabled) {
+                SLogs.d(TAG, "initPrefLiveData, biometricLockSwitch onChanged, changed value = " + enabled);
                 // Only manage timeout visibility here. The switch state is handled
                 // natively by the preference framework via per-account SharedPreferences.
                 // Calling setChecked() here would clobber the framework's correct value
@@ -879,6 +903,7 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
         int transferCount = map.getInt(TransferWorker.KEY_TRANSFER_COUNT);
 
         SLogs.d(TAG, "on event: " + statusEvent, "dataSource: " + dataSource, "total count:" + transferCount);
+
 
         if (TextUtils.equals(statusEvent, TransferEvent.EVENT_SCANNING)) {
             refreshPendingCount(dataSource, statusEvent, true, result);
@@ -1511,6 +1536,9 @@ public class TabSettings2Fragment extends RenameSharePreferenceFragmentCompat {
     private final Observer<String> mediaMountBusObserver = new Observer<String>() {
         @Override
         public void onChanged(String actionStr) {
+
+            SLogs.d(TAG, "mediaMountBusObserver onChanged, changed value = " + actionStr);
+            
             if (TextUtils.isEmpty(actionStr)) {
                 return;
             }

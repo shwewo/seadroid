@@ -108,7 +108,10 @@ public class BottomSheetMenuManager {
         int menuId = R.menu.bottom_sheet_op_repo;
         if (selectedRepoModels.size() == 1) {
             RepoModel repoModel = selectedRepoModels.get(0);
-            if (repoModel.isCustomPermission()) {
+            if (!repoModel.hasManageRepoPermission()) {
+                List<PermissionEntity> permissionEntities = CollectionUtils.newArrayList(new PermissionEntity(repoModel.repo_id, "r"));
+                toParseMenu(context, menuId, permissionEntities, disableMenuIds, removedMenuIds);
+            } else if (repoModel.isCustomPermission()) {
                 Single<List<PermissionEntity>> permissionSingle = AppDatabase.getInstance().permissionDAO().getByRepoAndIdAsync(repoModel.repo_id, repoModel.getCustomPermissionNum());
                 compositeDisposable.add(permissionSingle
                         .subscribeOn(Schedulers.io())
@@ -376,19 +379,19 @@ public class BottomSheetMenuManager {
                 return CollectionUtils.newArrayList(
                         R.id.star, R.id.share, R.id.export, R.id.rename,
                         R.id.delete, R.id.copy, R.id.move, R.id.upload,
-                        R.id.download, R.id.open_with, R.id.save_as,R.id.profile);
+                        R.id.download, R.id.open_with, R.id.save_as, R.id.profile);
             } else {
                 SearchModel sm = (SearchModel) selectedList.get(0);
                 if (sm.isDir()) {
                     return CollectionUtils.newArrayList(
                             R.id.star, R.id.share, R.id.rename, R.id.delete,
                             R.id.upload, R.id.export, R.id.open_with,
-                            R.id.download, R.id.save_as,R.id.profile);
+                            R.id.download, R.id.save_as, R.id.profile);
                 } else {
                     //Only supported: Export, Copy, Move, Download, Open With, Save As
                     return CollectionUtils.newArrayList(
                             R.id.star, R.id.share, R.id.rename,
-                            R.id.delete, R.id.upload,R.id.profile);
+                            R.id.delete, R.id.upload, R.id.profile);
                 }
             }
         }
@@ -396,10 +399,12 @@ public class BottomSheetMenuManager {
         if (selectedList.size() == 1) {
             BaseModel baseModel = selectedList.get(0);
             if (baseModel instanceof RepoModel m) {
-
+                if (m.encrypted){
+                    return CollectionUtils.newArrayList(R.id.share);
+                }
             } else if (baseModel instanceof DirentModel m) {
                 if (m.isDir()) {
-                    return CollectionUtils.newArrayList(R.id.export, R.id.open_with, R.id.upload, R.id.save_as,R.id.profile);
+                    return CollectionUtils.newArrayList(R.id.export, R.id.open_with, R.id.upload, R.id.save_as, R.id.profile);
                 }
             }
 
@@ -410,7 +415,7 @@ public class BottomSheetMenuManager {
                 .filter(f -> f instanceof RepoModel)
                 .count();
         if (selectedRepoModelCount > 0) {
-            return CollectionUtils.newArrayList(R.id.delete);
+            return CollectionUtils.newArrayList(R.id.delete,R.id.share);
         }
 
         long selectedFolderCount = selectedList.stream()
@@ -420,14 +425,14 @@ public class BottomSheetMenuManager {
                 .count();
 
         if (selectedFolderCount > 0) {
-            return CollectionUtils.newArrayList(R.id.share, R.id.export, R.id.open_with, R.id.rename, R.id.upload, R.id.save_as,R.id.profile);
+            return CollectionUtils.newArrayList(R.id.share, R.id.export, R.id.open_with, R.id.rename, R.id.upload, R.id.save_as, R.id.profile);
         }
 
         long selectedDirentModelCount = selectedList.stream()
                 .filter(f -> f instanceof DirentModel)
                 .count();
         if (selectedDirentModelCount > 0) {
-            return CollectionUtils.newArrayList(R.id.share, R.id.export, R.id.open_with, R.id.rename, R.id.save_as,R.id.profile);
+            return CollectionUtils.newArrayList(R.id.share, R.id.export, R.id.open_with, R.id.rename, R.id.save_as, R.id.profile);
         }
 
         return CollectionUtils.newArrayList(R.id.share, R.id.export, R.id.open_with, R.id.rename);

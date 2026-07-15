@@ -131,8 +131,8 @@
     <item quantity="one">%1$d item geselecteerd</item>
     <item quantity="other">%1$d items geselecteerd</item>
   </plurals>
-  <string name="repo_name_empty">Geef de naam van de bibliotheek op</string>
-  <string name="dir_name_empty">Geef de mapnaam op</string>
+  <string name="repo_name_empty">Geef de naam van de bibliotheek opSelectorType</string>
+  <string name="dir_name_empty">Geef de mapnaam opSelectorType</string>
   <string name="file_name_empty">Gelieve de bestandsnaam in te geven</string>
   <string name="password_empty">Gelieve het wachtwoord in te geven</string>
   <string name="name_contains_slash">Naam mag geen slash bevatten</string>
@@ -252,7 +252,7 @@
   <string name="upload_cancelled">Upload geannuleerd</string>
   <string name="upload_failed">Upload mislukt</string>
   <string name="upload_file_exist">Bestand bestaat reeds</string>
-  <string name="upload_duplicate_found">Een item genaamd \"%s\" bestaat al op deze plek.\n Vervangen met het item wat je aan het uploaden bent?</string>
+  <string name="upload_duplicate_found">Een item genaamd \"%s\" bestaat al opSelectorType deze plek.\n Vervangen met het item wat je aan het uploaden bent?</string>
   <string name="upload_replace_all">Alles vervangen</string>
   <string name="upload_keep_both">Beide behouden</string>
   <string name="upload_replace">Vervangen</string>
@@ -347,8 +347,8 @@
   <string name="lockpattern_need_to_draw">Teken handgebaar beveiligingspatroon</string>
   <string name="lockpattern_need_to_confirm">Bevestig je patroon</string>
   <string name="lockpattern_need_to_unlock_wrong">Patroon komt niet overeen. Probeer het opnieuw.</string>
-  <string name="lockpattern_pattern_confirmed_header">Druk op \"ok\" om je patroon op te slaan</string>
-  <string name="lockpattern_recording_inprogress">Til vinger op na het tekenen</string>
+  <string name="lockpattern_pattern_confirmed_header">Druk opSelectorType \"ok\" om je patroon opSelectorType te slaan</string>
+  <string name="lockpattern_recording_inprogress">Til vinger opSelectorType na het tekenen</string>
   <string name="lockpattern_pattern_toast_saved">Handgebaar beveiligingspatroon is opgeslagen</string>
   <!--Strings for possible PreferenceActivity Back/Next buttons-->
   <string name="back_button_label">Terug</string>
@@ -496,7 +496,7 @@
   </plurals>
   <!--Sort-->
   <string name="sort_menu_item">Sorteren</string>
-  <string name="sort_files">Sorteer op</string>
+  <string name="sort_files">Sorteer opSelectorType</string>
   <string-array name="sort_files_options_array">
     <item>Naam</item>
     <item>Naam (aflopend)</item>
@@ -531,9 +531,9 @@
   </plurals>
   <string name="notification_download_completed">Download voltooid</string>
   <string name="notification_background_file_monitor_channel">Achtergrondsbestandsmonitor</string>
-  <string name="notification_background_file_monitor_desc">Achtergrondscontrole op bestandswijzigingen</string>
+  <string name="notification_background_file_monitor_desc">Achtergrondscontrole opSelectorType bestandswijzigingen</string>
   <string name="notification_background_file_monitor_title">Bestandsmonitor actief</string>
-  <string name="notification_background_file_monitor_content">Bezig met controleren van bestanden op de achtergrond</string>
+  <string name="notification_background_file_monitor_content">Bezig met controleren van bestanden opSelectorType de achtergrond</string>
   <!--Gallery-->
   <string name="gallery_load_photos_error">Fout bij het laden van foto\'s</string>
   <string name="gallery_encrypted_repo_not_supported">Gecodeerde bibliotheek wordt niet ondersteund</string>
@@ -554,7 +554,7 @@
   <string name="no_more_activities">Geen acties meer over</string>
   <!--client side encryption and decryption-->
   <string name="enc_on">Data lokaal ontsleutelen</string>
-  <string name="enc_off">Data op de server ontsleutelen</string>
+  <string name="enc_off">Data opSelectorType de server ontsleutelen</string>
   <string name="enc_title">Client-side versleuteling</string>
   <!--clear password-->
   <string name="clear_password_title">Wachtwoord bibliotheek verwijderen</string>
@@ -685,10 +685,10 @@
   <string name="menu_action_view_list">Lijstweergave</string>
   <string name="menu_action_view_grid">Rasterweergave</string>
   <string name="menu_action_view_gallery">Galerijweergave</string>
-  <string name="menu_action_sort_by_name">Sorteren op naam</string>
-  <string name="menu_action_sort_by_type">Sorteren op type</string>
-  <string name="menu_action_sort_by_size">Sorteren op grootte</string>
-  <string name="menu_action_sort_by_last_modified">Sorteren op laatst gewijzigd</string>
+  <string name="menu_action_sort_by_name">Sorteren opSelectorType naam</string>
+  <string name="menu_action_sort_by_type">Sorteren opSelectorType type</string>
+  <string name="menu_action_sort_by_size">Sorteren opSelectorType grootte</string>
+  <string name="menu_action_sort_by_last_modified">Sorteren opSelectorType laatst gewijzigd</string>
   <string name="menu_action_sort_order_ascending">Oplopende sortering</string>
   <string name="menu_action_sort_directories_first">Mappen eerst weergeven</string>
   <string name="menu_detail">Details</string>
@@ -738,7 +738,7 @@
   <string name="font_style_heading5">Kop 5</string>
   <string name="font_style_heading6">Kop 6</string>
   <!--sdoc system event-->
-  <string name="sdoc_system_event_failed_to_execute_operation_on_server">Bewerking op server mislukt</string>
+  <string name="sdoc_system_event_failed_to_execute_operation_on_server">Bewerking opSelectorType server mislukt</string>
   <string name="sdoc_system_event_failed_to_sync_with_server_operations">Synchroniseren met server mislukt</string>
   <string name="sdoc_system_event_internal_server_exec_operations_error">Interne serverfout</string>
   <string name="sdoc_system_event_token_expired_please_refresh_the_page">Token verlopen, vernieuw de pagina</string>

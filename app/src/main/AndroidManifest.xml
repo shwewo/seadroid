@@ -169,6 +169,7 @@
         <activity android:name=".ui.selector.LongTextSelectorActivity" />
         <activity android:name=".ui.office_doc.OfficeDocumentWebActivity" />
         <activity android:name=".ui.share.VersatileShareToSeafileSelectorActivity" />
+        <activity android:name=".ui.selector.OpSelectorActivity" />
         <activity
             android:name=".ui.file_profile.FileProfileEditorActivity"
             android:windowSoftInputMode="adjustResize"

@@ -1,5 +1,6 @@
 package com.seafile.seadroid2.ui.selector.versatile;
 
+import android.os.Build;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,25 +13,46 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.blankj.utilcode.util.CollectionUtils;
 import com.chad.library.adapter4.BaseQuickAdapter;
 import com.seafile.seadroid2.R;
+import com.seafile.seadroid2.account.Account;
 import com.seafile.seadroid2.compat.ContextCompatKt;
 import com.seafile.seadroid2.databinding.LayoutFrameSwipeRvBinding;
 import com.seafile.seadroid2.framework.model.versatile.RecentlyUsedModel;
 import com.seafile.seadroid2.ui.base.fragment.BaseFragment;
+import com.seafile.seadroid2.ui.selector.OpSelectorActivity;
 
 import java.util.List;
 
 public class RecentlyUsedFragment extends BaseFragment {
     private LayoutFrameSwipeRvBinding binding;
     private RecentlyUsedListAdapter adapter;
+    private Account mAccount;
 
-    public static RecentlyUsedFragment newInstance() {
-        return new RecentlyUsedFragment();
+    public static RecentlyUsedFragment newInstance(Account account) {
+        Bundle bundle = new Bundle();
+        bundle.putParcelable("account",account);
+        RecentlyUsedFragment fragment = new RecentlyUsedFragment();
+        fragment.setArguments(bundle);
+        return fragment;
     }
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        Bundle bundle = getArguments();
+        if (bundle == null || !bundle.containsKey("account")){
+            throw new IllegalArgumentException("account is null");
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            mAccount = bundle.getParcelable("account",Account.class);
+        }else{
+            mAccount = bundle.getParcelable("account");
+        }
+
+        if (mAccount == null){
+            throw new IllegalArgumentException("account is null");
+        }
     }
 
     @Nullable
@@ -100,14 +122,12 @@ public class RecentlyUsedFragment extends BaseFragment {
         adapter.notifyDataSetChanged();
     }
 
-
     private void loadData() {
-        List<RecentlyUsedModel> list = VersatileSelectorActivity.getRecentUsedList();
+        List<RecentlyUsedModel> list = OpSelectorActivity.getRecentUsedList(mAccount);
         if (CollectionUtils.isEmpty(list)) {
             return;
         }
 
         adapter.submitList(list);
-
     }
 }

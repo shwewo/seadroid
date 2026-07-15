@@ -167,10 +167,6 @@ public abstract class ParentEventUploader extends ParentEventTransfer {
         return primaryHttpClient;
     }
 
-    public TransferModel getCurrentTransferringModel() {
-        return currentTransferModel;
-    }
-
     private OkHttpClient getChunkUploadHttpClient(Account account) {
         if (chunkUploadHttpClient == null) {
             chunkUploadHttpClient = getPrimaryHttpClient(account)
@@ -221,6 +217,22 @@ public abstract class ParentEventUploader extends ParentEventTransfer {
         if (getTransferNotificationDispatcher() != null) {
             getTransferNotificationDispatcher().clearDelay();
         }
+    }
+
+    public void clearWhenComplete(){
+        currentTransferModel = null;
+        newCall = null;
+        uriRequestBody = null;
+        uriChunkRequestBody = null;
+        fileRequestBody = null;
+        fileChunkRequestBody = null;
+        primaryHttpClient = null;
+        chunkUploadHttpClient = null;
+    }
+
+
+    public TransferModel getCurrentTransferringModel() {
+        return currentTransferModel;
     }
 
     public void transfer(Account account, TransferModel transferModel) throws SeafException {

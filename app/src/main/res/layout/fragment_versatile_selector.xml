@@ -51,13 +51,6 @@
 
     </LinearLayout>
 
-    <com.google.android.material.divider.MaterialDivider
-        android:id="@+id/divider"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:dividerColor="@color/divider_color"
-        app:dividerInsetStart="16dp" />
-
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipe_refresh_layout"
         android:layout_width="match_parent"

@@ -1,15 +1,18 @@
 package com.seafile.seadroid2.framework.util;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.widget.Toast;
 
 import androidx.annotation.StringRes;
 
-import com.blankj.utilcode.util.ThreadUtils;
 import com.seafile.seadroid2.SeadroidApplication;
 
 public class Toasts {
+    private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
+
     public static void show(@StringRes final int resId) {
         show(SeadroidApplication.getAppContext(), resId, false);
     }
@@ -58,11 +61,17 @@ public class Toasts {
             return;
         }
 
-        ThreadUtils.runOnUiThread(new Runnable() {
+        Runnable toastRunnable = new Runnable() {
             @Override
             public void run() {
-                Toast.makeText(context, text, isShort ? Toast.LENGTH_LONG : Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, text, isShort ? Toast.LENGTH_SHORT : Toast.LENGTH_LONG).show();
             }
-        });
+        };
+
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            toastRunnable.run();
+        } else {
+            MAIN_HANDLER.post(toastRunnable);
+        }
     }
 }

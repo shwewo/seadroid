@@ -125,6 +125,8 @@ public class LocalFileUpdater extends ParentEventUploader {
             }
         }
 
+        clearWhenComplete();
+
         // clear all notifications
         getTransferNotificationDispatcher().clearDelay();
 

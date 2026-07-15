@@ -4,6 +4,7 @@ import android.accounts.AccountAuthenticatorResponse;
 import android.accounts.AccountManager;
 import android.os.Bundle;
 
+import com.seafile.seadroid2.framework.util.SLogs;
 import com.seafile.seadroid2.ui.base.BaseActivity;
 
 /**
@@ -21,6 +22,7 @@ import com.seafile.seadroid2.ui.base.BaseActivity;
  * will be called on the response.
  */
 public class BaseAuthenticatorActivity extends BaseActivity {
+    private static final String TAG = "BaseAuthenticatorActivity";
     private AccountAuthenticatorResponse mAccountAuthenticatorResponse = null;
     private Bundle mResultBundle = null;
 
@@ -44,6 +46,7 @@ public class BaseAuthenticatorActivity extends BaseActivity {
 
         mAccountAuthenticatorResponse =
                 getIntent().getParcelableExtra(AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE);
+        SLogs.d(TAG, getClass().getSimpleName() + " created, hasResponse=" + (mAccountAuthenticatorResponse != null));
 
         if (mAccountAuthenticatorResponse != null) {
             mAccountAuthenticatorResponse.onRequestContinued();
@@ -57,8 +60,10 @@ public class BaseAuthenticatorActivity extends BaseActivity {
         if (mAccountAuthenticatorResponse != null) {
             // send the result bundle back if set, otherwise send an error.
             if (mResultBundle != null) {
+                SLogs.d(TAG, getClass().getSimpleName() + " finishing with authenticator result");
                 mAccountAuthenticatorResponse.onResult(mResultBundle);
             } else {
+                SLogs.w(TAG, getClass().getSimpleName() + " finishing without authenticator result, sending canceled");
                 mAccountAuthenticatorResponse.onError(AccountManager.ERROR_CODE_CANCELED,
                         "canceled");
             }

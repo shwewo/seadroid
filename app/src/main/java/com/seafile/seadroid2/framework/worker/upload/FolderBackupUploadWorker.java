@@ -220,6 +220,12 @@ public class FolderBackupUploadWorker extends BaseUploadWorker {
 
         //
         setIsRunning(false);
+
+        // Cancel notification to make sure foreground service stops
+        if (notificationManager != null) {
+            notificationManager.cancel();
+        }
+
         sendCompleteEvent(FeatureDataSource.FOLDER_BACKUP, errorMsg, totalPendingCount);
         return Result.success();
     }

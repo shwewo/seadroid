@@ -106,16 +106,16 @@ public class AccountDetailActivity extends BaseActivityWithVM<AccountViewModel> 
 
         Intent intent = getIntent();
 
-        String defaultServerUri = intent.getStringExtra(SeafileAuthenticatorActivity.ARG_SERVER_URI);
+        String defaultServerUri = intent.getStringExtra(Constants.AccountKeys.ARG_SERVER_URI);
 
         if (intent.getBooleanExtra("isEdited", false)) {
-            String account_name = intent.getStringExtra(SeafileAuthenticatorActivity.ARG_ACCOUNT_NAME);
-            String account_type = intent.getStringExtra(SeafileAuthenticatorActivity.ARG_ACCOUNT_TYPE);
+            String account_name = intent.getStringExtra(Constants.AccountKeys.ARG_ACCOUNT_NAME);
+            String account_type = intent.getStringExtra(Constants.AccountKeys.ARG_ACCOUNT_TYPE);
             android.accounts.Account account = new android.accounts.Account(account_name, account_type);
 
             android.accounts.AccountManager mAccountManager = android.accounts.AccountManager.get(getBaseContext());
             String server = mAccountManager.getUserData(account, Authenticator.KEY_SERVER_URI);
-            String email = mAccountManager.getUserData(account, Authenticator.KEY_EMAIL);
+            String email = mAccountManager.getUserData(account, Authenticator.KEY_CONTACT_EMAIL);
             String name = mAccountManager.getUserData(account, Authenticator.KEY_NAME);
             mSessionKey = mAccountManager.getUserData(account, Authenticator.SESSION_KEY);
             // isFromEdit = mAccountManager.getUserData(account, Authenticator.KEY_EMAIL);
@@ -172,17 +172,14 @@ public class AccountDetailActivity extends BaseActivityWithVM<AccountViewModel> 
             }
         });
 
-        getViewModel().getAccountSeafExceptionLiveData().observe(this, new Observer<Pair<Account, SeafException>>() {
+        getViewModel().getRequestAccountResultData().observe(this, new Observer<Pair<Account, SeafException>>() {
             @Override
             public void onChanged(Pair<Account, SeafException> pair) {
-                onLoginException(pair.first, pair.second);
-            }
-        });
-
-        getViewModel().getAccountLiveData().observe(this, new Observer<Account>() {
-            @Override
-            public void onChanged(Account account) {
-                onLoggedIn(account);
+                if (pair.second == SeafException.SUCCESS) {
+                    onLoggedIn(pair.first);
+                } else {
+                    onLoginException(pair.first, pair.second);
+                }
             }
         });
     }
@@ -288,7 +285,7 @@ public class AccountDetailActivity extends BaseActivityWithVM<AccountViewModel> 
         retData.putExtras(getIntent());
         retData.putExtra(android.accounts.AccountManager.KEY_ACCOUNT_NAME, loginAccount.getSignature());
         retData.putExtra(android.accounts.AccountManager.KEY_AUTHTOKEN, loginAccount.getToken());
-        retData.putExtra(android.accounts.AccountManager.KEY_ACCOUNT_TYPE, getIntent().getStringExtra(SeafileAuthenticatorActivity.ARG_ACCOUNT_TYPE));
+        retData.putExtra(android.accounts.AccountManager.KEY_ACCOUNT_TYPE, getIntent().getStringExtra(Constants.AccountKeys.ARG_ACCOUNT_TYPE));
 
         //extra params
         retData.putExtra(SeafileAuthenticatorActivity.ARG_AVATAR_URL, loginAccount.getAvatarUrl());
@@ -307,12 +304,14 @@ public class AccountDetailActivity extends BaseActivityWithVM<AccountViewModel> 
 
     @Override
     public void onDestroy() {
+        SLogs.d(DEBUG_TAG, "onDestroy");
         dismissLoadingDialog();
         super.onDestroy();
     }
 
     @Override
     protected void onSaveInstanceState(Bundle savedInstanceState) {
+        SLogs.d(DEBUG_TAG, "onSaveInstanceState");
         savedInstanceState.putString("email", binding.emailAddress.getText().toString());
         savedInstanceState.putString("password", binding.password.getText().toString());
         savedInstanceState.putBoolean("rememberDevice", binding.rememberDevice.isChecked());
@@ -322,6 +321,8 @@ public class AccountDetailActivity extends BaseActivityWithVM<AccountViewModel> 
     @Override
     protected void onRestoreInstanceState(Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);
+
+        SLogs.d(DEBUG_TAG, "onRestoreInstanceState");
 
         binding.emailAddress.setText((String) savedInstanceState.get("email"));
         binding.password.setText((String) savedInstanceState.get("password"));
@@ -337,7 +338,8 @@ public class AccountDetailActivity extends BaseActivityWithVM<AccountViewModel> 
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case android.R.id.home:
-
+                SLogs.d(DEBUG_TAG, "initPrefLiveData, onOptionsItemSelected, home");
+                
                 /* FYI {@link http://stackoverflow.com/questions/13293772/how-to-navigate-up-to-the-same-parent-state?rq=1} */
                 Intent upIntent = new Intent(this, AccountsActivity.class);
                 if (NavUtils.shouldUpRecreateTask(this, upIntent)) {
@@ -366,7 +368,7 @@ public class AccountDetailActivity extends BaseActivityWithVM<AccountViewModel> 
         binding.serverUrl.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
-                Log.d(DEBUG_TAG, "serverText has focus: " + (hasFocus ? "yes" : "no"));
+                SLogs.d(DEBUG_TAG, "serverText has focus: " + (hasFocus ? "yes" : "no"));
                 serverTextHasFocus = hasFocus;
             }
         });
@@ -615,7 +617,7 @@ public class AccountDetailActivity extends BaseActivityWithVM<AccountViewModel> 
             serverURL = Utils.cleanServerURL(serverURL);
         } catch (MalformedURLException | URISyntaxException e) {
             binding.statusView.setText(R.string.invalid_server_address);
-            Log.d(DEBUG_TAG, "Invalid URL " + serverURL);
+            SLogs.d(DEBUG_TAG, "Invalid URL " + serverURL);
             return;
         }
 

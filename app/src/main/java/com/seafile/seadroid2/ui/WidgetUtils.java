@@ -29,10 +29,15 @@ import com.blankj.utilcode.util.NetworkUtils;
 import com.seafile.seadroid2.BuildConfig;
 import com.seafile.seadroid2.R;
 import com.seafile.seadroid2.SeadroidApplication;
+import com.seafile.seadroid2.baseviewmodel.WrapViewModel;
+import com.seafile.seadroid2.config.Constants;
+import com.seafile.seadroid2.config.ObjKey;
 import com.seafile.seadroid2.framework.db.entities.DirentModel;
+import com.seafile.seadroid2.framework.db.entities.RepoModel;
 import com.seafile.seadroid2.framework.model.objs.DirentShareLinkModel;
 import com.seafile.seadroid2.framework.notification.base.NotificationUtils;
 import com.seafile.seadroid2.framework.util.FileExports;
+import com.seafile.seadroid2.framework.util.Objs;
 import com.seafile.seadroid2.framework.util.SLogs;
 import com.seafile.seadroid2.framework.util.Toasts;
 import com.seafile.seadroid2.framework.util.Utils;
@@ -40,6 +45,9 @@ import com.seafile.seadroid2.listener.OnCreateDirentShareLinkListener;
 import com.seafile.seadroid2.ui.base.BaseActivity;
 import com.seafile.seadroid2.ui.dialog_fragment.AppChoiceDialogFragment;
 import com.seafile.seadroid2.ui.dialog_fragment.GetShareLinkPasswordDialogFragment;
+import com.seafile.seadroid2.ui.dialog_fragment.RepoShareLinkDialogFragment;
+
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -188,9 +196,69 @@ public class WidgetUtils {
     }
 
 
+    public static void showCreateShareLinkDialog(Context context, FragmentManager fragmentManager, DirentModel direntModel, boolean isAdvance) {
+        if (!NetworkUtils.isConnected()) {
+            Toasts.show(R.string.network_error);
+            return;
+        }
 
-    public static void showChooseAppDialog(Context context, FragmentManager fragmentManager, DirentShareLinkModel shareLinkModel, boolean isDir) {
-        String title = context.getString(isDir ? R.string.share_dir_link : R.string.share_file_link);
+        if (direntModel == null) {
+            return;
+        }
+
+        GetShareLinkPasswordDialogFragment dialogFragment = new GetShareLinkPasswordDialogFragment();
+        dialogFragment.init(direntModel.repo_id, direntModel.full_path, isAdvance);
+        dialogFragment.setOnCreateDirentShareLinkListener(new OnCreateDirentShareLinkListener() {
+            @Override
+            public void onCreateDirentShareLink(DirentShareLinkModel linkModel) {
+                if (linkModel == null) {
+                    dialogFragment.dismiss();
+                    return;
+                }
+                showChooseAppDialog(context, fragmentManager, linkModel, direntModel.isDir() ? ObjKey.DIR : ObjKey.FILE);
+                dialogFragment.dismiss();
+            }
+        });
+        dialogFragment.show(fragmentManager, GetShareLinkPasswordDialogFragment.class.getSimpleName());
+    }
+
+    public static void showRepoShareLinkDialog(Context context, FragmentManager fragmentManager, RepoModel repoModel) {
+        if (!NetworkUtils.isConnected()) {
+            Toasts.show(R.string.network_error);
+            return;
+        }
+
+        if (repoModel == null) {
+            return;
+        }
+
+        RepoShareLinkDialogFragment dialogFragment = RepoShareLinkDialogFragment.newInstance(repoModel.repo_id);
+        dialogFragment.setOnSharedListener(new OnCreateDirentShareLinkListener() {
+            @Override
+            public void onCreateDirentShareLink(DirentShareLinkModel linkModel) {
+                if (linkModel == null) {
+                    dialogFragment.dismiss();
+                    return;
+                }
+                showChooseAppDialog(context, fragmentManager, linkModel, ObjKey.REPO);
+                dialogFragment.dismiss();
+            }
+        });
+        dialogFragment.show(fragmentManager, GetShareLinkPasswordDialogFragment.class.getSimpleName());
+    }
+
+    public static void showChooseAppDialog(Context context, FragmentManager fragmentManager, DirentShareLinkModel shareLinkModel, String objKey) {
+        String title;
+        if (StringUtils.equals(ObjKey.FILE, objKey)) {
+            title = context.getString(R.string.share_file_link);
+        } else if (StringUtils.equals(ObjKey.DIR, objKey)) {
+            title = context.getString(R.string.share_dir_link);
+        } else if (StringUtils.equals(ObjKey.REPO, objKey)) {
+            title = context.getString(R.string.share_repo_link);
+        } else {
+            title = context.getString(R.string.share_file_link);
+        }
+
 
         Intent shareIntent = new Intent();
         shareIntent.setAction(Intent.ACTION_SEND);
@@ -220,32 +288,6 @@ public class WidgetUtils {
             }
         });
         dialog.show(fragmentManager, AppChoiceDialogFragment.class.getSimpleName());
-    }
-
-    public static void showCreateShareLinkDialog(Context context, FragmentManager fragmentManager, DirentModel direntModel, boolean isAdvance) {
-        if (!NetworkUtils.isConnected()) {
-            Toasts.show(R.string.network_error);
-            return;
-        }
-
-        if (direntModel == null) {
-            return;
-        }
-
-        GetShareLinkPasswordDialogFragment dialogFragment = new GetShareLinkPasswordDialogFragment();
-        dialogFragment.init(direntModel.repo_id, direntModel.full_path, isAdvance);
-        dialogFragment.setOnCreateDirentShareLinkListener(new OnCreateDirentShareLinkListener() {
-            @Override
-            public void onCreateDirentShareLink(DirentShareLinkModel linkModel) {
-                if (linkModel == null) {
-                    dialogFragment.dismiss();
-                    return;
-                }
-                showChooseAppDialog(context, fragmentManager, linkModel, direntModel.isDir());
-                dialogFragment.dismiss();
-            }
-        });
-        dialogFragment.show(fragmentManager, GetShareLinkPasswordDialogFragment.class.getSimpleName());
     }
 
     private static ResolveInfo getWeChatIntent(Intent intent) {

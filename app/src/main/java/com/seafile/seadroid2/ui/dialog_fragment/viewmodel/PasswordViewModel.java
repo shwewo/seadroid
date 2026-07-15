@@ -9,35 +9,22 @@ import com.blankj.utilcode.util.CollectionUtils;
 import com.blankj.utilcode.util.TimeUtils;
 import com.seafile.seadroid2.SeafException;
 import com.seafile.seadroid2.account.Account;
-import com.seafile.seadroid2.framework.crypto.Crypto;
+import com.seafile.seadroid2.baseviewmodel.BaseViewModel;
 import com.seafile.seadroid2.framework.crypto.SecurePasswordManager;
+import com.seafile.seadroid2.framework.datastore.sp.SettingsManager;
 import com.seafile.seadroid2.framework.db.AppDatabase;
 import com.seafile.seadroid2.framework.db.entities.EncKeyCacheEntity;
 import com.seafile.seadroid2.framework.db.entities.RepoModel;
 import com.seafile.seadroid2.framework.http.HttpManager;
 import com.seafile.seadroid2.framework.model.ResultModel;
 import com.seafile.seadroid2.framework.model.TResultModel;
-import com.seafile.seadroid2.framework.datastore.DataManager;
-import com.seafile.seadroid2.framework.datastore.sp.SettingsManager;
-import com.seafile.seadroid2.framework.http.HttpIO;
 import com.seafile.seadroid2.framework.model.repo.RepoInfoModel;
-import com.seafile.seadroid2.framework.util.SLogs;
-import com.seafile.seadroid2.baseviewmodel.BaseViewModel;
 import com.seafile.seadroid2.ui.dialog_fragment.DialogService;
 import com.seafile.seadroid2.ui.repo.RepoService;
 
-import java.io.UnsupportedEncodingException;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.spec.InvalidKeySpecException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
 
 import io.reactivex.Single;
 import io.reactivex.SingleEmitter;
@@ -206,95 +193,4 @@ public class PasswordViewModel extends BaseViewModel {
             getRefreshLiveData().setValue(false);
         });
     }
-
-    @Deprecated
-    private void localVerify(RepoModel repoModel, String password) {
-        //local decrypt
-        Single<Exception> verifySingle = Single.create(new SingleOnSubscribe<Exception>() {
-            @Override
-            public void subscribe(SingleEmitter<Exception> emitter) {
-                if (emitter == null || emitter.isDisposed()) {
-                    return;
-                }
-
-                try {
-                    Crypto.verifyRepoPassword(repoModel.repo_id, password, repoModel.enc_version, repoModel.magic);
-
-                    emitter.onSuccess(SeafException.SUCCESS);
-                } catch (SeafException seafException) {
-                    emitter.onSuccess(seafException);
-
-                } catch (NoSuchAlgorithmException | UnsupportedEncodingException |
-                         InvalidKeySpecException |
-                         NoSuchPaddingException | InvalidKeyException |
-                         InvalidAlgorithmParameterException |
-                         BadPaddingException | IllegalBlockSizeException e) {
-                    e.printStackTrace();
-
-                    emitter.onSuccess(e);
-                }
-            }
-        });
-
-        Single<Exception> insertEncSingle = Single.create(new SingleOnSubscribe<Exception>() {
-            @Override
-            public void subscribe(SingleEmitter<Exception> emitter) {
-                if (emitter == null || emitter.isDisposed()) {
-                    return;
-                }
-
-                try {
-                    Pair<String, String> pair = Crypto.generateKey(password, repoModel.random_key, repoModel.enc_version);
-
-                    EncKeyCacheEntity entity = new EncKeyCacheEntity();
-                    entity.enc_key = pair.first;
-                    entity.enc_iv = pair.second;
-                    entity.repo_id = repoModel.repo_id;
-                    entity.related_account = repoModel.related_account;
-
-                    long expire = TimeUtils.getNowMills();
-                    expire += DataManager.SET_PASSWORD_INTERVAL;
-                    entity.expire_time_long = expire;
-
-                    AppDatabase.getInstance().encKeyCacheDAO().insertSync(entity);
-
-                    emitter.onSuccess(SeafException.SUCCESS);
-                } catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
-                    SLogs.e(e);
-
-                    emitter.onSuccess(e);
-                }
-            }
-        });
-
-
-        Single<Exception> longSingle = verifySingle.flatMap(new Function<Exception, SingleSource<Exception>>() {
-            @Override
-            public SingleSource<Exception> apply(Exception exception) {
-                if (exception != SeafException.SUCCESS) {
-                    return Single.just(exception);
-                }
-
-                return insertEncSingle;
-            }
-        });
-
-        addSingleDisposable(longSingle, new Consumer<Exception>() {
-            @Override
-            public void accept(Exception exception) {
-                TResultModel<RepoModel> resultModel = new TResultModel<>();
-                if (exception != SeafException.SUCCESS) {
-                    resultModel.error_msg = getErrorMsgByThrowable(exception);
-                } else {
-                    resultModel.success = true;
-                    resultModel.data = repoModel;
-                }
-
-                getActionResultLiveData().setValue(resultModel);
-                getRefreshLiveData().setValue(false);
-            }
-        });
-    }
-
-
 }

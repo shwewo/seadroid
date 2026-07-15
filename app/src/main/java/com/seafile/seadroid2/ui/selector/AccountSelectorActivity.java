@@ -129,7 +129,6 @@ public class AccountSelectorActivity extends BaseActivityWithVM<ObjSelectorViewM
         });
         QuickAdapterHelper helper = new QuickAdapterHelper.Builder(adapter).build();
         binding.rv.setAdapter(helper.getAdapter());
-        binding.rv.setPadding(0, Constants.DP.DP_8, 0, Constants.DP.DP_32);
         binding.rv.setClipToPadding(false);
     }
 

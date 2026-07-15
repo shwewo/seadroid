@@ -107,15 +107,13 @@ import com.seafile.seadroid2.ui.media.player.CustomExoVideoPlayerActivity;
 import com.seafile.seadroid2.ui.office_doc.OfficeDocumentWebActivity;
 import com.seafile.seadroid2.ui.repo.sheetaction.BottomSheetActionView;
 import com.seafile.seadroid2.ui.repo.sheetaction.BottomSheetMenuManager;
-import com.seafile.seadroid2.ui.repo.sort.SortPopupWindow;
 import com.seafile.seadroid2.ui.sdoc.SDocWebViewActivity;
-import com.seafile.seadroid2.ui.selector.versatile.VersatileSelectorActivity;
+import com.seafile.seadroid2.ui.selector.OpSelectorActivity;
 import com.seafile.seadroid2.ui.star.StarredQuickFragment;
 import com.seafile.seadroid2.view.TipsViews;
 import com.seafile.seadroid2.view.ViewSortPopupWindow;
 
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -1904,41 +1902,43 @@ public class RepoQuickFragment extends BaseFragmentWithVM<RepoViewModel> {
      * Share a file. Generating a file share link and send the link or file to someone
      * through some app.
      */
-    public void showShareDialog(List<BaseModel> dirents) {
-        if (CollectionUtils.isEmpty(dirents)) {
+    public void showShareDialog(List<BaseModel> objs) {
+        if (CollectionUtils.isEmpty(objs)) {
             return;
         }
 
         //close action mode firstly
         closeActionMode();
+        BaseModel baseModel = objs.get(0);
+        if (baseModel instanceof RepoModel repoModel) {
+            WidgetUtils.showRepoShareLinkDialog(requireContext(), getChildFragmentManager(), repoModel);
+        } else if (baseModel instanceof DirentModel direntModel) {
+            MaterialAlertDialogBuilder mBuilder = new MaterialAlertDialogBuilder(requireContext());
 
-        DirentModel direntModel = (DirentModel) dirents.get(0);
+            boolean inChina = Utils.isInChina();
+            String[] strings;
 
-        MaterialAlertDialogBuilder mBuilder = new MaterialAlertDialogBuilder(requireContext());
+            //if user in China, system add WeChat share
+            if (inChina) {
+                strings = getResources().getStringArray(R.array.file_action_share_array_zh);
+            } else {
+                strings = getResources().getStringArray(R.array.file_action_share_array);
+            }
 
-        boolean inChina = Utils.isInChina();
-        String[] strings;
+            mBuilder.setItems(strings, (dialog, which) -> {
+                if (!inChina) {
+                    which++;
+                }
 
-        //if user in China, system add WeChat share
-        if (inChina) {
-            strings = getResources().getStringArray(R.array.file_action_share_array_zh);
-        } else {
-            strings = getResources().getStringArray(R.array.file_action_share_array);
+                if (which == 0) {
+                    shareFile(direntModel);
+                } else if (which == 1) {
+                    WidgetUtils.showCreateShareLinkDialog(requireContext(), getChildFragmentManager(), direntModel, false);
+                } else if (which == 2) {
+                    WidgetUtils.showCreateShareLinkDialog(requireContext(), getChildFragmentManager(), direntModel, true);
+                }
+            }).show();
         }
-
-        mBuilder.setItems(strings, (dialog, which) -> {
-            if (!inChina) {
-                which++;
-            }
-
-            if (which == 0) {
-                shareFile(direntModel);
-            } else if (which == 1) {
-                WidgetUtils.showCreateShareLinkDialog(requireContext(), getChildFragmentManager(), direntModel, false);
-            } else if (which == 2) {
-                WidgetUtils.showCreateShareLinkDialog(requireContext(), getChildFragmentManager(), direntModel, true);
-            }
-        }).show();
     }
 
     private void shareFile(DirentModel dirent) {
@@ -2104,7 +2104,7 @@ public class RepoQuickFragment extends BaseFragmentWithVM<RepoViewModel> {
      */
     private void chooseCopyMoveDestForMultiFiles(String repoID, String repoName,
                                                  String dirPath, List<BaseModel> models,
-                                                 OpType op) {
+                                                 OpType opType) {
         closeActionMode();
 
         if (CollectionUtils.isEmpty(models)) {
@@ -2126,14 +2126,16 @@ public class RepoQuickFragment extends BaseFragmentWithVM<RepoViewModel> {
                 .collect(Collectors.toList());
 
 
-        copyMoveContext = new CopyMoveContext(repoID, repoName, dirPath, ds, op);
+        copyMoveContext = new CopyMoveContext(repoID, repoName, dirPath, ds, opType);
 
         String fileName = null;
         if (ds.size() == 1) {
             fileName = ds.get(0).name;
         }
 
-        Intent intent = VersatileSelectorActivity.getCurrentAccountIntent(requireContext(), repoID, dirPath, fileName, op == OpType.COPY);
+        OpSelectorActivity.OpSelectorType opSelectorType = opType == OpType.COPY ? OpSelectorActivity.OpSelectorType.COPY : OpSelectorActivity.OpSelectorType.MOVE;
+
+        Intent intent = OpSelectorActivity.getCurrentAccountIntent(requireContext(), repoID, dirPath, fileName, opSelectorType);
         copyMoveLauncher.launch(intent);
     }
 

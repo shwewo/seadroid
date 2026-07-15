@@ -144,6 +144,11 @@ public class FileUploadWorker extends BaseUploadWorker {
         showToast(R.string.upload_finished);
         SLogs.d(TAG, "start()", "complete");
 
+        // Cancel notification to make sure foreground service stops
+        if (notificationManager != null) {
+            notificationManager.cancel();
+        }
+
         Bundle b = new Bundle();
         b.putString(TransferWorker.KEY_DATA_RESULT, interruptibleExceptionMsg);
         b.putInt(TransferWorker.KEY_TRANSFER_COUNT, totalPendingCount);

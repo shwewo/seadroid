@@ -132,6 +132,8 @@ public class FileUploader extends ParentEventUploader {
             Toasts.show(R.string.upload_completed);
         }
 
+        clearWhenComplete();
+
         // clear all notifications
         getTransferNotificationDispatcher().clearDelay();
 

@@ -161,6 +161,11 @@ public class DownloadWorker extends BaseDownloadWorker {
             showToast(R.string.download_finished);
         }
 
+        // Cancel notification to make sure foreground service stops
+        if (notificationHelper != null) {
+            notificationHelper.cancel();
+        }
+
         //
         Bundle b = new Bundle();
         b.putString(TransferWorker.KEY_DATA_RESULT, interruptibleExceptionMsg);

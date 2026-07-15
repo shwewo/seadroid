@@ -30,6 +30,7 @@ import com.seafile.seadroid2.ui.adapter.ViewPager2Adapter;
 import com.seafile.seadroid2.ui.base.BaseActivity;
 import com.seafile.seadroid2.ui.dialog_fragment.BottomSheetNewDirFileDialogFragment;
 import com.seafile.seadroid2.ui.dialog_fragment.listener.OnRefreshDataListener;
+import com.seafile.seadroid2.ui.selector.versatile.RecentlyUsedFragment;
 import com.seafile.seadroid2.ui.selector.versatile.VersatileRepoSelectorFragment;
 import com.seafile.seadroid2.ui.star.StarredQuickFragment;
 
@@ -38,6 +39,7 @@ import org.apache.commons.lang3.StringUtils;
 import java.util.ArrayList;
 import java.util.List;
 
+@Deprecated
 public class VersatileShareToSeafileSelectorActivity extends BaseActivity {
     private ActivityVersatileShareToSeafileBinding binding;
     private final List<Fragment> fragments = new ArrayList<>();
@@ -135,25 +137,25 @@ public class VersatileShareToSeafileSelectorActivity extends BaseActivity {
             return;
         }
 
-        VersatileRepoSelectorFragment vrsf = (VersatileRepoSelectorFragment) fragments.get(index);
-        RecentlyUsedModel r = vrsf.genRecentUsedModel();
-        if (r == null) {
-            Toasts.show(R.string.choose_a_library);
-            return;
-        }
-
-        String rid = r.repoId;
-        String parentPath = r.path;
-        BottomSheetNewDirFileDialogFragment dialogFragment = BottomSheetNewDirFileDialogFragment.newInstance(mAccount, rid, parentPath, true);
-        dialogFragment.setRefreshListener(new OnRefreshDataListener() {
-            @Override
-            public void onActionStatus(boolean isDone) {
-                if (isDone) {
-                    vrsf.initLoad();
-                }
-            }
-        });
-        dialogFragment.show(getSupportFragmentManager(), BottomSheetNewDirFileDialogFragment.class.getSimpleName());
+//        VersatileRepoSelectorFragment vrsf = (VersatileRepoSelectorFragment) fragments.get(index);
+//        RecentlyUsedModel r = vrsf.genRecentUsedModel();
+//        if (r == null) {
+//            Toasts.show(R.string.choose_a_library);
+//            return;
+//        }
+//
+//        String rid = r.repoId;
+//        String parentPath = r.path;
+//        BottomSheetNewDirFileDialogFragment dialogFragment = BottomSheetNewDirFileDialogFragment.newInstance(mAccount, rid, parentPath, true);
+//        dialogFragment.setRefreshListener(new OnRefreshDataListener() {
+//            @Override
+//            public void onActionStatus(boolean isDone) {
+//                if (isDone) {
+//                    vrsf.initLoad();
+//                }
+//            }
+//        });
+//        dialogFragment.show(getSupportFragmentManager(), BottomSheetNewDirFileDialogFragment.class.getSimpleName());
     }
 
     private void initView() {
@@ -236,6 +238,7 @@ public class VersatileShareToSeafileSelectorActivity extends BaseActivity {
         fragments.clear();
         fragments.add(VersatileRepoSelectorFragment.newInstance(accountSignature, startRepoId, startPath));
         fragments.add(StarredQuickFragment.newInstance(accountSignature, true));
+        fragments.add(RecentlyUsedFragment.newInstance(mAccount));
 
         ViewPager2Adapter viewPager2Adapter = new ViewPager2Adapter(this);
         viewPager2Adapter.addFragments(fragments);

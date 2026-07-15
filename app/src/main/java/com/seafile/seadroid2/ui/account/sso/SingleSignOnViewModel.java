@@ -140,8 +140,8 @@ public class SingleSignOnViewModel extends BaseViewModel {
                 loginAccount.setContactEmail(accountInfo.getContactEmail());
                 loginAccount.setName(accountInfo.getName());
                 loginAccount.setAvatarUrl(accountInfo.getAvatarUrl());
-                loginAccount.total = accountInfo.getTotal();
-                loginAccount.usage = accountInfo.getUsage();
+                loginAccount.setTotalSpace(accountInfo.getTotal());
+                loginAccount.setUsageSpace(accountInfo.getUsage());
                 loginAccount.login_time = System.currentTimeMillis();
                 loginAccount.is_shib = true;
 

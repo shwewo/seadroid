@@ -126,7 +126,7 @@ public class SeafileAuthenticatorActivity extends BaseAuthenticatorActivity {
                 if (id == SEACLOUD_CC) {
                     intent = new Intent(SeafileAuthenticatorActivity.this, AccountDetailActivity.class);
                     intent.putExtras(getIntent());
-                    intent.putExtra(SeafileAuthenticatorActivity.ARG_SERVER_URI, getString(R.string.server_url_seacloud));
+                    intent.putExtra(Constants.AccountKeys.ARG_SERVER_URI, getString(R.string.server_url_seacloud));
                 } else if (id == SINGLE_SIGN_ON_LOGIN) {
                     intent = new Intent(SeafileAuthenticatorActivity.this, SingleSignOnActivity.class);
                     intent.putExtras(getIntent());
@@ -143,10 +143,10 @@ public class SeafileAuthenticatorActivity extends BaseAuthenticatorActivity {
             }
         });
 
-        if (getIntent().getBooleanExtra(ARG_SHIB, false)) {
+        if (getIntent().getBooleanExtra(Constants.AccountKeys.ARG_SHIB, false)) {
 
             Intent intent = new Intent(this, SingleSignOnActivity.class);
-            Account account = new Account(getIntent().getStringExtra(SeafileAuthenticatorActivity.ARG_ACCOUNT_NAME), Constants.Account.ACCOUNT_TYPE);
+            Account account = new Account(getIntent().getStringExtra(Constants.AccountKeys.ARG_ACCOUNT_NAME), Constants.Account.ACCOUNT_TYPE);
 
             String serverUrl = SupportAccountManager.getInstance().getUserData(account, Authenticator.KEY_SERVER_URI);
             intent.putExtra(SeafileAuthenticatorActivity.SINGLE_SIGN_ON_SERVER_URL, serverUrl);
@@ -155,7 +155,7 @@ public class SeafileAuthenticatorActivity extends BaseAuthenticatorActivity {
             }
             activityLauncher.launch(intent);
 
-        } else if (getIntent().getBooleanExtra(ARG_IS_EDITING, false)) {
+        } else if (getIntent().getBooleanExtra(Constants.AccountKeys.ARG_IS_EDITING, false)) {
 
             Intent intent = new Intent(this, AccountDetailActivity.class);
             if (getIntent() != null) {
@@ -263,12 +263,12 @@ public class SeafileAuthenticatorActivity extends BaseAuthenticatorActivity {
 
 
         //new android account
-        final Account newAccount = new Account(newAccountName, accountType);
+        final android.accounts.Account androidAccount = new android.accounts.Account(newAccountName, accountType);
         //add account
-        SupportAccountManager.getInstance().addAccountExplicitly(newAccount, null, bundle);
-        SupportAccountManager.getInstance().setAuthToken(newAccount, Authenticator.AUTHTOKEN_TYPE, authToken);
+        SupportAccountManager.getInstance().addAccountExplicitly(androidAccount, null, bundle);
+        SupportAccountManager.getInstance().updateAuthToken(androidAccount, Authenticator.AUTHTOKEN_TYPE, authToken);
         if (shib) {
-            SupportAccountManager.getInstance().setUserData(newAccount, Authenticator.KEY_SHIB, "shib");
+            SupportAccountManager.getInstance().updateShib(androidAccount, "shib");
         }
 
         // clear context stack

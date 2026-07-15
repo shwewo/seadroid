@@ -11,7 +11,6 @@ import android.os.Bundle;
 import android.provider.MediaStore;
 import android.text.TextUtils;
 import android.util.Log;
-import android.util.Pair;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResult;
@@ -40,6 +39,7 @@ import com.seafile.seadroid2.framework.worker.queue.TransferModel;
 import com.seafile.seadroid2.preferences.Settings;
 import com.seafile.seadroid2.ui.base.BaseActivityWithVM;
 import com.seafile.seadroid2.ui.selector.AccountSelectorActivity;
+import com.seafile.seadroid2.ui.selector.OpSelectorActivity;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -232,7 +232,7 @@ public class ShareToSeafileActivity extends BaseActivityWithVM<ShareToSeafileVie
 
 
     private void launchObjSelector(String repoId, String path) {
-        Intent pathSelector = VersatileShareToSeafileSelectorActivity.getSpecialAccountIntent(ShareToSeafileActivity.this, account.getSignature(), repoId, path, null, 2);
+        Intent pathSelector = OpSelectorActivity.getSpecialAccountIntent(ShareToSeafileActivity.this, account.getSignature(), repoId, path, null, OpSelectorActivity.OpSelectorType.SHARE);
         objSelectorLauncher.launch(pathSelector);
     }
 
