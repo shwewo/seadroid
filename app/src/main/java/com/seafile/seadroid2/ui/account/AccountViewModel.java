@@ -24,7 +24,6 @@ import com.seafile.seadroid2.framework.util.SLogs;
 import com.seafile.seadroid2.framework.util.Toasts;
 import com.seafile.seadroid2.ssl.CertsManager;
 import com.seafile.seadroid2.ssl.ClientCertManager;
-import com.seafile.seadroid2.baseviewmodel.BaseViewModel;
 import com.seafile.seadroid2.ui.main.MainService;
 
 import java.util.HashMap;
@@ -46,42 +45,6 @@ public class AccountViewModel extends BaseViewModel {
 
     public MutableLiveData<Pair<Account, SeafException>> getRequestAccountResultData() {
         return AccountSeafExceptionLiveData;
-    }
-
-    public MutableLiveData<Account> getAccountLiveData() {
-        return mAccountLiveData;
-    }
-
-    public MutableLiveData<AccountInfo> getAccountInfoLiveData() {
-        return mAccountInfoLiveData;
-    }
-
-    public void loadAccountInfo(Account loginAccount, String authToken) {
-        getRefreshLiveData().setValue(true);
-
-        loginAccount.token = authToken;
-        Single<AccountInfo> single = HttpManager.getHttpWithAccount(loginAccount).execute(AccountService.class).getAccountInfo();
-        addSingleDisposable(single, new Consumer<AccountInfo>() {
-            @Override
-            public void accept(AccountInfo accountInfo) throws Exception {
-
-                loginAccount.login_time = System.currentTimeMillis();
-                loginAccount.setEmail(accountInfo.getEmail());
-                loginAccount.setContactEmail(accountInfo.getContactEmail());
-                loginAccount.setName(accountInfo.getName());
-                loginAccount.setAvatarUrl(accountInfo.getAvatarUrl());
-
-                getAccountLiveData().setValue(loginAccount);
-            }
-        }, new Consumer<Throwable>() {
-            @Override
-            public void accept(Throwable throwable) throws Exception {
-                getRefreshLiveData().setValue(false);
-
-                SeafException seafException = getSeafExceptionByThrowable(throwable);
-                getAccountSeafExceptionLiveData().setValue(new Pair<>(loginAccount, seafException));
-            }
-        });
     }
 
     public void login(Account tempAccount, String pwd, String authToken, boolean isRememberDevice) {

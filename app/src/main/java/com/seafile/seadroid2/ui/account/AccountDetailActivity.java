@@ -36,6 +36,7 @@ import com.seafile.seadroid2.account.Authenticator;
 import com.seafile.seadroid2.config.Constants;
 import com.seafile.seadroid2.databinding.AccountDetailBinding;
 import com.seafile.seadroid2.framework.util.ContentResolvers;
+import com.seafile.seadroid2.framework.util.SLogs;
 import com.seafile.seadroid2.framework.util.Utils;
 import com.seafile.seadroid2.ssl.CertsManager;
 import com.seafile.seadroid2.ssl.ClientCertManager;
@@ -660,7 +661,13 @@ public class AccountDetailActivity extends BaseActivityWithVM<AccountViewModel> 
             imm.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
         }
 
-        Account tempAccount = new Account(null, serverURL, email, null, null, false, mSessionKey, String.valueOf(System.currentTimeMillis()));
+        Account tempAccount = new Account();
+        tempAccount.setServer(serverURL);
+        tempAccount.setEmail(email);
+        tempAccount.setContactEmail(email);
+        tempAccount.is_shib = false;
+        tempAccount.setSessionKey(mSessionKey);
+        tempAccount.setLoginTimestamp(System.currentTimeMillis());
 
         // bind (or clear) the chosen client certificate to this account before the login
         // request is made, so the mTLS handshake during login already presents it
