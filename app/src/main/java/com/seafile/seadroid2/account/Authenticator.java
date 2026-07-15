@@ -114,7 +114,7 @@ public class Authenticator extends AbstractAccountAuthenticator {
             return result;
         }
 
-        final Intent intent = new Intent(context, Constants.AccountKeys.class);
+        final Intent intent = new Intent(context, SeafileAuthenticatorActivity.class);
         intent.putExtra(Constants.AccountKeys.ARG_ACCOUNT_TYPE, accountType);
         intent.putExtra(Constants.AccountKeys.ARG_IS_EDITING, false);
         intent.putExtra(android.accounts.AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE, response);
