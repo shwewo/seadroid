@@ -171,6 +171,7 @@
   </string-array>
   <string name="add_repo">مكتبة جديدة</string>
   <string name="add_file">إضافة</string>
+  <!--add_file_options_array Deprecated-->
   <string-array name="video_download_array">
     <item>تشغيل</item>
     <item>تنزيل</item>
@@ -303,6 +304,7 @@
   <string name="gesture_lock">قفل الإيماءة</string>
   <string name="gesture_lock_on">قفل الإيماءة مفعل</string>
   <string name="gesture_lock_off">قفل الإيماءة معطل</string>
+  <!--Biometric lock-->
   <string name="lockscreen_access_pattern_hint">يرجى رسم نمط القفل</string>
   <string name="lockscreen_access_pattern_start">ابدأ بالرسم</string>
   <string name="lockscreen_access_pattern_cleared">حُذف النمط</string>
@@ -764,4 +766,5 @@
   <string name="reconnected">أعيد الاتصال</string>
   <string name="saving">حفظ</string>
   <string name="saved">تم الحفظ</string>
+  <!--Tips-->
 </resources>

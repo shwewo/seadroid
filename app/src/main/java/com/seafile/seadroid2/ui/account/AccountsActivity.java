@@ -27,6 +27,7 @@ import com.seafile.seadroid2.framework.model.ServerInfo;
 import com.seafile.seadroid2.framework.datastore.sp.AppDataManager;
 import com.seafile.seadroid2.account.AccountUtils;
 import com.seafile.seadroid2.framework.service.BackupThreadExecutor;
+import com.seafile.seadroid2.framework.util.SLogs;
 import com.seafile.seadroid2.framework.util.Toasts;
 import com.seafile.seadroid2.listener.OnCallback;
 import com.seafile.seadroid2.ui.SplashActivity;
@@ -328,7 +329,7 @@ public class AccountsActivity extends BaseActivityWithVM<AccountViewModel> imple
             account = adapter.getItem((int) info.id);
 
             getViewModel().deleteAccount(account);
-            Log.d(DEBUG_TAG, "removing account " + account);
+            SLogs.d(DEBUG_TAG, "removing account = " + account);
             return true;
         }
         return super.onContextItemSelected(item);

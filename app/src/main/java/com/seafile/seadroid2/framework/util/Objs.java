@@ -274,7 +274,7 @@ public class Objs {
 
         TreeMap<String, List<RepoModel>> treeMap = groupRepos(list);
 
-        // ShareToSeafileActivity used it, otherwise, we does not need to add it here
+        // ShareToSeafileActivity used it, otherwise, we do not need to add it here
         if (isAddStarredGroup) {
             List<RepoModel> starredList = list.stream().filter(f -> f.starred).collect(Collectors.toList());
             if (!CollectionUtils.isEmpty(starredList)) {

@@ -2,11 +2,13 @@ package com.seafile.seadroid2.ui.repo.sheetaction;
 
 import android.app.Activity;
 import android.content.Context;
+import android.text.TextUtils;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 
 import com.blankj.utilcode.util.CollectionUtils;
 import com.seafile.seadroid2.R;
+import com.seafile.seadroid2.config.RepoType;
 import com.seafile.seadroid2.context.GlobalNavContext;
 import com.seafile.seadroid2.framework.db.AppDatabase;
 import com.seafile.seadroid2.framework.db.entities.DirentModel;
@@ -109,6 +111,7 @@ public class BottomSheetMenuManager {
         if (selectedRepoModels.size() == 1) {
             RepoModel repoModel = selectedRepoModels.get(0);
             if (!repoModel.hasManageRepoPermission()) {
+                // only-read permission
                 List<PermissionEntity> permissionEntities = CollectionUtils.newArrayList(new PermissionEntity(repoModel.repo_id, "r"));
                 toParseMenu(context, menuId, permissionEntities, disableMenuIds, removedMenuIds);
             } else if (repoModel.isCustomPermission()) {
@@ -415,7 +418,7 @@ public class BottomSheetMenuManager {
                 .filter(f -> f instanceof RepoModel)
                 .count();
         if (selectedRepoModelCount > 0) {
-            return CollectionUtils.newArrayList(R.id.delete,R.id.share);
+            return CollectionUtils.newArrayList(R.id.rename, R.id.delete, R.id.share);
         }
 
         long selectedFolderCount = selectedList.stream()
