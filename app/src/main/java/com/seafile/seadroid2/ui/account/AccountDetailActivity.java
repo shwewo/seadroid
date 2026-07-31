@@ -47,7 +47,6 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 
 public class AccountDetailActivity extends BaseActivityWithVM<AccountViewModel> implements Toolbar.OnMenuItemClickListener {
     private final String DEBUG_TAG = "AccountDetailActivity";
@@ -83,6 +82,8 @@ public class AccountDetailActivity extends BaseActivityWithVM<AccountViewModel> 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        SLogs.d(DEBUG_TAG, "onCreate");
 
         binding = AccountDetailBinding.inflate(getLayoutInflater());
 
