@@ -297,6 +297,10 @@ public class Utils {
             return true;
         }
 
+        if (isPdfFile(fileName)) {
+            return true;
+        }
+
         return false;
     }
 
@@ -435,6 +439,24 @@ public class Utils {
         }
 
         return false;
+    }
+
+    public static boolean isPdfFile(String name) {
+        if (TextUtils.isEmpty(name)) {
+            return false;
+        }
+
+        String suffix = FilenameUtils.getExtension(name);
+        if (TextUtils.isEmpty(suffix)) {
+            return false;
+        }
+        suffix = suffix.toLowerCase(Locale.ROOT);
+        if (TextUtils.equals("pdf", suffix)) {
+            return true;
+        }
+
+        String mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(suffix);
+        return TextUtils.equals(mime, "application/pdf");
     }
 
     @NonNull
