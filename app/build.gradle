@@ -195,6 +195,10 @@ android {
         viewBinding true
     }
 
+    testOptions {
+        unitTests.includeAndroidResources = true
+    }
+
     allprojects {
         repositories {
             maven { url 'https://jitpack.io' }
@@ -381,4 +385,3 @@ android {
     }
 
 }
-
