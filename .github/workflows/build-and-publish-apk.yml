@@ -49,6 +49,8 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
 
       # The native heicgen build uses CMake + NDK. AGP 8.8 has no pinned ndkVersion,
       # so install its default NDK (r27) and CMake to keep CI deterministic.
